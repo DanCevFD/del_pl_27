@@ -1,7 +1,6 @@
-from shiny import App, ui, render, reactive
+from shiny import App, ui, render, reactive, Inputs, Outputs, Session
 import pandas as pd
 import re
-import webbrowser
 from urllib.parse import quote
 
 
@@ -16,17 +15,13 @@ APP_TITLE = "Delivery Information"
 # EMAIL CONFIGURATION
 # ============================================================
 #
-# Main recipient
-#
-# CHANGE THIS TO YOUR WORK EMAIL
+# MAIN EMAIL
 #
 OWNER_EMAIL = "Stephan.Gilis@unitedbeetseeds.org"
 
 
 # ------------------------------------------------------------
-# CC recipient
-#
-# CHANGE THIS TO THE SECOND EMAIL ADDRESS
+# CC EMAIL
 #
 CC_EMAIL = "Danny.Cevallos@unitedbeetseeds.org"
 
@@ -322,7 +317,7 @@ def create_r_vector(
         )
 
     # --------------------------------------------------------
-    # Calculate widths
+    # Calculate column widths
     # --------------------------------------------------------
 
     widths = {}
@@ -443,71 +438,6 @@ def create_r_vector(
 
 
 # ============================================================
-# OPEN OUTLOOK EMAIL
-# ============================================================
-
-def open_outlook_email(
-    destination,
-    submission_df
-):
-
-    r_vector = create_r_vector(
-        submission_df
-    )
-
-    # --------------------------------------------------------
-    # EMAIL SUBJECT
-    # --------------------------------------------------------
-
-    subject = (
-        "Delivery information - "
-        f"{destination}"
-    )
-
-    # --------------------------------------------------------
-    # EMAIL BODY
-    # --------------------------------------------------------
-
-    body = (
-        "Please see below the delivery information\n"
-        "\n"
-        f"{r_vector}\n"
-    )
-
-    # --------------------------------------------------------
-    # MICROSOFT 365 OUTLOOK COMPOSE URL
-    # --------------------------------------------------------
-
-    outlook_url = (
-        "https://outlook.office.com/mail/deeplink/compose?"
-        "to="
-        + quote(
-            OWNER_EMAIL
-        )
-        + "&cc="
-        + quote(
-            CC_EMAIL
-        )
-        + "&subject="
-        + quote(
-            subject
-        )
-        + "&body="
-        + quote(
-            body
-        )
-    )
-
-    # --------------------------------------------------------
-    # OPEN OUTLOOK
-    # --------------------------------------------------------
-
-    webbrowser.open(
-        outlook_url
-    )
-
-
-# ============================================================
 # USER INTERFACE
 # ============================================================
 
@@ -518,6 +448,112 @@ app_ui = ui.page_fluid(
         ui.tags.title(
             APP_TITLE
         ),
+
+        # ====================================================
+        # JAVASCRIPT FOR REMOTE OUTLOOK
+        # ====================================================
+        #
+        # When the user clicks Send:
+        #
+        # 1. Open a blank browser tab immediately.
+        # 2. The Shiny server prepares the Outlook URL.
+        # 3. The server sends the URL back to THIS browser.
+        # 4. The blank tab navigates to Outlook.
+        #
+        # This is important because Python is running on the
+        # remote server after deployment.
+        #
+        # ====================================================
+
+        ui.tags.script("""
+
+        (function() {
+
+            let outlookWindow = null;
+
+            document.addEventListener(
+                "click",
+                function(event) {
+
+                    const button =
+                        event.target.closest(
+                            "#send"
+                        );
+
+                    if (!button) {
+                        return;
+                    }
+
+                    /*
+                     * Open the blank window immediately as
+                     * part of the user's click.
+                     *
+                     * This greatly reduces the possibility
+                     * that the browser will block it as a
+                     * popup.
+                     */
+
+                    outlookWindow = window.open(
+                        "about:blank",
+                        "_blank"
+                    );
+
+                },
+                true
+            );
+
+
+            /*
+             * Receive the Outlook URL from the Shiny
+             * Python server.
+             */
+
+            Shiny.addCustomMessageHandler(
+                "open_outlook",
+                function(message) {
+
+                    const url = message.url;
+
+                    if (!url) {
+                        return;
+                    }
+
+
+                    /*
+                     * If the blank tab was successfully opened,
+                     * use it.
+                     */
+
+                    if (
+                        outlookWindow &&
+                        !outlookWindow.closed
+                    ) {
+
+                        outlookWindow.location.href =
+                            url;
+
+                        outlookWindow.focus();
+
+                    }
+
+                    /*
+                     * Fallback in case the browser closed or
+                     * blocked the blank tab.
+                     */
+
+                    else {
+
+                        window.location.href =
+                            url;
+
+                    }
+
+                }
+            );
+
+        })();
+
+        """),
 
         ui.tags.style("""
 
@@ -685,7 +721,6 @@ app_ui = ui.page_fluid(
         }
 
         """)
-
     ),
 
     ui.div(
@@ -741,9 +776,9 @@ app_ui = ui.page_fluid(
 # ============================================================
 
 def server(
-    input,
-    output,
-    session
+    input: Inputs,
+    output: Outputs,
+    session: Session
 ):
 
     # ========================================================
@@ -1536,19 +1571,6 @@ def server(
     # ========================================================
     # AUTOMATIC ORD LIMIT
     # ========================================================
-    #
-    # The total of all week cells can never exceed ORD.
-    #
-    # Example:
-    #
-    # ORD = 1200
-    #
-    # W5 = 700
-    # W6 = 600
-    #
-    # W6 automatically becomes 500.
-    #
-    # ========================================================
 
     def make_week_limiter(
         week
@@ -1579,13 +1601,11 @@ def server(
                 "ord"
             )
 
-
             if pd.isna(
                 ord_value
             ):
 
                 return
-
 
             try:
 
@@ -1609,11 +1629,9 @@ def server(
                 f"week_{week}"
             )()
 
-
             if not current_value:
 
                 return
-
 
             current_value = str(
                 current_value
@@ -1628,18 +1646,16 @@ def server(
 
                 return
 
-
             current_value = int(
                 current_value
             )
 
 
             # ------------------------------------------------
-            # Calculate all OTHER weeks
+            # Calculate OTHER weeks
             # ------------------------------------------------
 
             other_total = 0
-
 
             min_week = int(
                 country[
@@ -1647,13 +1663,11 @@ def server(
                 ]
             )
 
-
             max_week = int(
                 country[
                     "max_week"
                 ]
             )
-
 
             for other_week in range(
                 min_week,
@@ -1664,22 +1678,18 @@ def server(
 
                     continue
 
-
                 other_value = getattr(
                     input,
                     f"week_{other_week}"
                 )()
 
-
                 if not other_value:
 
                     continue
 
-
                 other_value = str(
                     other_value
                 ).strip()
-
 
                 if other_value.isdigit():
 
@@ -1696,11 +1706,6 @@ def server(
                 ord_value
                 - other_total
             )
-
-
-            # ------------------------------------------------
-            # Prevent negative remaining amount
-            # ------------------------------------------------
 
             remaining = max(
                 0,
@@ -1747,7 +1752,7 @@ def server(
     @reactive.event(
         input.send
     )
-    def process_submission():
+    async def process_submission():
 
         country = current_country()
 
@@ -1771,7 +1776,6 @@ def server(
         ord_value = country.get(
             "ord"
         )
-
 
         if pd.isna(
             ord_value
@@ -1804,7 +1808,6 @@ def server(
             ]
         )
 
-
         rows = []
 
         total = 0
@@ -1820,11 +1823,9 @@ def server(
                 f"week_{week}"
             )()
 
-
             if not value:
 
                 value = "0"
-
 
             value = str(
                 value
@@ -1849,9 +1850,7 @@ def server(
                 value
             )
 
-
             total += numeric_value
-
 
             rows.append(
 
@@ -1861,18 +1860,13 @@ def server(
 
                     "qty":
                         numeric_value
-
                 }
 
             )
 
 
         # ====================================================
-        # CHECK ORD ONE MORE TIME
-        # ====================================================
-        #
-        # This is an additional safety check before sending.
-        #
+        # FINAL ORD CHECK
         # ====================================================
 
         if (
@@ -1926,7 +1920,6 @@ def server(
             qty = row[
                 "qty"
             ]
-
 
             if qty == 0:
 
@@ -1992,41 +1985,85 @@ def server(
 
 
         # ====================================================
-        # OPEN OUTLOOK
+        # CREATE R VECTOR
         # ====================================================
 
-        try:
+        r_vector = create_r_vector(
+            submission_df
+        )
 
-            open_outlook_email(
 
-                destination=
-                    str(
-                        country[
-                            "DESTINATION_NAME"
-                        ]
-                    ),
+        # ====================================================
+        # EMAIL
+        # ====================================================
 
-                submission_df=
-                    submission_df
+        subject = (
+            "Delivery information - "
+            f"{country['DESTINATION_NAME']}"
+        )
 
+
+        body = (
+            "Please see below the delivery information\n"
+            "\n"
+            f"{r_vector}\n"
+        )
+
+
+        # ====================================================
+        # MICROSOFT 365 OUTLOOK URL
+        # ====================================================
+
+        outlook_url = (
+            "https://outlook.office.com/mail/deeplink/compose?"
+            "to="
+            + quote(
+                OWNER_EMAIL
             )
-
-        except Exception as e:
-
-            print(
-                "OUTLOOK ERROR:",
-                repr(e)
+            + "&cc="
+            + quote(
+                CC_EMAIL
             )
-
-            status_type.set(
-                "error"
+            + "&subject="
+            + quote(
+                subject
             )
-
-            status_message.set(
-                "Could not open Outlook."
+            + "&body="
+            + quote(
+                body
             )
+        )
 
-            return
+
+        # ====================================================
+        # SEND URL TO THE USER'S BROWSER
+        # ====================================================
+        #
+        # IMPORTANT:
+        #
+        # We do NOT use webbrowser.open() here.
+        #
+        # The Python process is running on the remote server.
+        #
+        # Instead, this message goes from:
+        #
+        #       SERVER
+        #          ↓
+        #       CLIENT BROWSER
+        #
+        # and JavaScript opens Outlook on the user's computer.
+        #
+        # Shiny supports this through custom messages.
+        #
+        # ====================================================
+
+        await session.send_custom_message(
+            "open_outlook",
+            {
+                "url":
+                    outlook_url
+            }
+        )
 
 
         # ====================================================
@@ -2036,7 +2073,6 @@ def server(
         status_type.set(
             "success"
         )
-
 
         status_message.set(
 
@@ -2050,6 +2086,51 @@ def server(
             <b>Input information</b> to enter data
             for another country.
             """
+
+        )
+
+
+    # ========================================================
+    # STATUS
+    # ========================================================
+
+    @output
+    @render.ui
+    def status():
+
+        message = status_message()
+
+        if not message:
+
+            return ui.HTML(
+                ""
+            )
+
+        if status_type() == "success":
+
+            return ui.div(
+
+                {
+                    "class":
+                        "success-box"
+                },
+
+                ui.HTML(
+                    message
+                )
+
+            )
+
+        return ui.div(
+
+            {
+                "class":
+                    "error-box"
+            },
+
+            ui.HTML(
+                message
+            )
 
         )
 
