@@ -2,6 +2,7 @@ from shiny import App, ui, render, reactive, Inputs, Outputs, Session
 import pandas as pd
 import re
 from urllib.parse import quote
+from datetime import date, timedelta
 
 
 # ============================================================
@@ -21,7 +22,7 @@ OWNER_EMAIL = "Stephan.Gilis@unitedbeetseeds.org"
 
 
 # ------------------------------------------------------------
-# CC EMAIL
+# SECOND OWNER EMAIL
 #
 SECOND_OWNER_EMAIL = "Danny.Cevallos@unitedbeetseeds.org"
 
@@ -438,6 +439,28 @@ def create_r_vector(
 
 
 # ============================================================
+# REPLENISHMENT CALENDAR LIMITS
+# ============================================================
+
+today = date.today()
+
+# Monday of the current week
+current_week_start = (
+    today
+    - timedelta(
+        days=today.weekday()
+    )
+)
+
+# End of next year
+next_year_end = date(
+    today.year + 1,
+    12,
+    31
+)
+
+
+# ============================================================
 # USER INTERFACE
 # ============================================================
 
@@ -451,18 +474,6 @@ app_ui = ui.page_fluid(
 
         # ====================================================
         # JAVASCRIPT FOR REMOTE OUTLOOK
-        # ====================================================
-        #
-        # When the user clicks Send:
-        #
-        # 1. Open a blank browser tab immediately.
-        # 2. The Shiny server prepares the Outlook URL.
-        # 3. The server sends the URL back to THIS browser.
-        # 4. The blank tab navigates to Outlook.
-        #
-        # This is important because Python is running on the
-        # remote server after deployment.
-        #
         # ====================================================
 
         ui.tags.script("""
@@ -484,15 +495,6 @@ app_ui = ui.page_fluid(
                         return;
                     }
 
-                    /*
-                     * Open the blank window immediately as
-                     * part of the user's click.
-                     *
-                     * This greatly reduces the possibility
-                     * that the browser will block it as a
-                     * popup.
-                     */
-
                     outlookWindow = window.open(
                         "about:blank",
                         "_blank"
@@ -502,11 +504,6 @@ app_ui = ui.page_fluid(
                 true
             );
 
-
-            /*
-             * Receive the Outlook URL from the Shiny
-             * Python server.
-             */
 
             Shiny.addCustomMessageHandler(
                 "open_outlook",
@@ -518,11 +515,6 @@ app_ui = ui.page_fluid(
                         return;
                     }
 
-
-                    /*
-                     * If the blank tab was successfully opened,
-                     * use it.
-                     */
 
                     if (
                         outlookWindow &&
@@ -536,17 +528,80 @@ app_ui = ui.page_fluid(
 
                     }
 
-                    /*
-                     * Fallback in case the browser closed or
-                     * blocked the blank tab.
-                     */
-
                     else {
 
                         window.location.href =
                             url;
 
                     }
+
+                }
+            );
+
+        })();
+
+        """),
+
+        # ====================================================
+        # JAVASCRIPT FOR REPLENISHMENT CALENDAR
+        # ====================================================
+        #
+        # Shiny's date input uses Bootstrap Datepicker.
+        #
+        # calendarWeeks is enabled here because it is not
+        # directly exposed as a Python input_date argument.
+        #
+        # ====================================================
+
+        ui.tags.script("""
+
+        (function() {
+
+            function enableReplenishmentWeekNumbers() {
+
+                const input =
+                    $("#replenishment_week");
+
+                if (!input.length) {
+                    return;
+                }
+
+                const datepicker =
+                    input.data("datepicker");
+
+                if (!datepicker) {
+                    return;
+                }
+
+                datepicker.calendarWeeks = true;
+
+                datepicker.fill();
+
+            }
+
+
+            $(document).on(
+                "shiny:value",
+                function(event) {
+
+                    setTimeout(
+                        enableReplenishmentWeekNumbers,
+                        100
+                    );
+
+                }
+            );
+
+
+            $(document).on(
+                "click",
+                "#replenishment_week",
+                function() {
+
+                    setTimeout(
+                        enableReplenishmentWeekNumbers,
+                        50
+                    );
 
                 }
             );
@@ -699,6 +754,57 @@ app_ui = ui.page_fluid(
             padding: 3px !important;
             text-align: center;
             box-sizing: border-box;
+        }
+
+        /* ====================================================
+           REPLENISHMENT WEEK
+           ==================================================== */
+
+        .replenishment-header {
+            white-space: normal !important;
+            line-height: 1.1;
+            width: 75px !important;
+            min-width: 75px !important;
+            max-width: 75px !important;
+        }
+
+        .replenishment-cell {
+            width: 75px !important;
+            min-width: 75px !important;
+            max-width: 75px !important;
+            white-space: normal !important;
+        }
+
+        .replenishment-cell .form-group {
+            margin-bottom: 0 !important;
+        }
+
+        .replenishment-cell .form-control {
+            width: 68px !important;
+            min-width: 68px !important;
+            max-width: 68px !important;
+            padding: 4px !important;
+            font-size: 12px !important;
+            text-align: center;
+        }
+
+        .replenishment-cell .input-group {
+            width: 68px !important;
+        }
+
+        .datepicker {
+            z-index: 9999 !important;
+        }
+
+        .datepicker table {
+            margin: 0 auto;
+        }
+
+        .datepicker .cw {
+            color: #777;
+            background-color: #f5f5f5;
+            font-size: 11px;
+            font-weight: 600;
         }
 
         .success-box {
@@ -988,6 +1094,39 @@ def server(
 
 
     # ========================================================
+    # REPLENISHMENT WEEK INPUT
+    # ========================================================
+
+    def create_replenishment_week_input():
+
+        return ui.input_date(
+
+            "replenishment_week",
+
+            None,
+
+            value="",
+
+            min=current_week_start,
+
+            max=next_year_end,
+
+            format="dd/mm/yyyy",
+
+            startview="month",
+
+            weekstart=1,
+
+            language="en",
+
+            width="70px",
+
+            autoclose=True
+
+        )
+
+
+    # ========================================================
     # DELIVERY TABLE
     # ========================================================
 
@@ -1115,6 +1254,29 @@ def server(
 
         )
 
+
+        # ====================================================
+        # REPLENISHMENT WEEK HEADER
+        # ====================================================
+
+        header_cells.append(
+
+            ui.tags.th(
+
+                ui.HTML(
+                    "Replenishment<br>week"
+                ),
+
+                {
+                    "class":
+                        "replenishment-header"
+                }
+
+            )
+
+        )
+
+
         header_cells.append(
 
             ui.tags.th(
@@ -1169,6 +1331,18 @@ def server(
                 )
 
             )
+
+        month_row.append(
+
+            ui.tags.th(
+                "",
+                {
+                    "class":
+                        "month-header"
+                }
+            )
+
+        )
 
         month_row.append(
 
@@ -1265,6 +1439,26 @@ def server(
 
 
         # ====================================================
+        # REPLENISHMENT WEEK
+        # ====================================================
+
+        quantity_cells.append(
+
+            ui.tags.td(
+
+                create_replenishment_week_input(),
+
+                {
+                    "class":
+                        "replenishment-cell"
+                }
+
+            )
+
+        )
+
+
+        # ====================================================
         # SEND
         # ====================================================
 
@@ -1328,6 +1522,24 @@ def server(
             )
 
         )
+
+
+        # ----------------------------------------------------
+        # REPLENISHMENT WEEK EMPTY CELL
+        # ----------------------------------------------------
+
+        percentage_cells.append(
+
+            ui.tags.td(
+                "",
+                {
+                    "class":
+                        "replenishment-cell"
+                }
+            )
+
+        )
+
 
         percentage_cells.append(
 
@@ -2015,46 +2227,28 @@ def server(
         # ====================================================
 
         outlook_url = (
-    "https://outlook.office.com/mail/deeplink/compose?"
-    "to="
-    + quote(
-        OWNER_EMAIL
-    )
-    + ","
-    + quote(
-        SECOND_OWNER_EMAIL
-    )
-    + "&subject="
-    + quote(
-        subject
-    )
-    + "&body="
-    + quote(
-        body
-    )
-)
+            "https://outlook.office.com/mail/deeplink/compose?"
+            "to="
+            + quote(
+                OWNER_EMAIL
+            )
+            + ","
+            + quote(
+                SECOND_OWNER_EMAIL
+            )
+            + "&subject="
+            + quote(
+                subject
+            )
+            + "&body="
+            + quote(
+                body
+            )
+        )
 
 
         # ====================================================
         # SEND URL TO THE USER'S BROWSER
-        # ====================================================
-        #
-        # IMPORTANT:
-        #
-        # We do NOT use webbrowser.open() here.
-        #
-        # The Python process is running on the remote server.
-        #
-        # Instead, this message goes from:
-        #
-        #       SERVER
-        #          ↓
-        #       CLIENT BROWSER
-        #
-        # and JavaScript opens Outlook on the user's computer.
-        #
-        # Shiny supports this through custom messages.
-        #
         # ====================================================
 
         await session.send_custom_message(
