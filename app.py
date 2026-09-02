@@ -1225,9 +1225,9 @@ app_ui = ui.page_fluid(
 
         .delivery-table th:nth-child(1),
         .delivery-table td:nth-child(1) {
-            width: 140px;
-            min-width: 140px;
-            max-width: 140px;
+            width: 120px;
+            min-width: 120px;
+            max-width: 120px;
         }
 
         .delivery-table th:nth-child(2),
