@@ -1039,6 +1039,7 @@ app_ui = ui.page_fluid(
         body {
             background-color: #f4f5f7;
             font-family: Arial, sans-serif;
+            font-size: 15px;
         }
 
         .main-container {
@@ -1051,7 +1052,7 @@ app_ui = ui.page_fluid(
         }
 
         .title {
-            font-size: 30px;
+            font-size: 29px;
             font-weight: 600;
             margin-bottom: 8px;
         }
@@ -1059,10 +1060,11 @@ app_ui = ui.page_fluid(
         .subtitle {
             color: #666;
             margin-bottom: 30px;
+            font-size: 14px;
         }
 
         .section-title {
-            font-size: 18px;
+            font-size: 17px;
             font-weight: 600;
             margin-top: 25px;
             margin-bottom: 15px;
@@ -1092,12 +1094,13 @@ app_ui = ui.page_fluid(
             width: auto;
             min-width: 800px;
             table-layout: fixed;
+            font-size: 13px;
         }
 
         .delivery-table th {
             background-color: #f0f1f3;
             border: 1px solid #d0d2d5;
-            padding: 8px;
+            padding: 7px;
             text-align: center;
             font-weight: 600;
             white-space: nowrap;
@@ -1105,48 +1108,53 @@ app_ui = ui.page_fluid(
 
         .delivery-table td {
             border: 1px solid #d0d2d5;
-            padding: 5px;
+            padding: 4px;
             text-align: center;
             white-space: nowrap;
         }
 
         .delivery-table th:nth-child(1),
         .delivery-table td:nth-child(1) {
-            width: 160px;
-            min-width: 160px;
-            max-width: 160px;
+            width: 150px;
+            min-width: 150px;
+            max-width: 150px;
         }
 
         .delivery-table th:nth-child(2),
         .delivery-table td:nth-child(2) {
-            width: 150px;
-            min-width: 150px;
+            width: 140px;
+            min-width: 140px;
+            max-width: 140px;
         }
 
         .delivery-table th:nth-child(3),
         .delivery-table td:nth-child(3) {
-            width: 55px;
-            min-width: 55px;
+            width: 52px;
+            min-width: 52px;
+            max-width: 52px;
         }
 
         .delivery-table th:nth-child(4),
         .delivery-table td:nth-child(4) {
-            width: 85px;
-            min-width: 85px;
+            width: 80px;
+            min-width: 80px;
+            max-width: 80px;
         }
 
         .delivery-table th:nth-child(n+5),
         .delivery-table td:nth-child(n+5) {
-            width: 65px;
-            min-width: 65px;
-            max-width: 65px;
+            width: 62px;
+            min-width: 62px;
+            max-width: 62px;
+            padding-left: 2px;
+            padding-right: 2px;
         }
 
         .delivery-table th.replenishment-header,
         .delivery-table td.replenishment-cell {
-            width: 140px !important;
-            min-width: 140px !important;
-            max-width: 140px !important;
+            width: 135px !important;
+            min-width: 135px !important;
+            max-width: 135px !important;
         }
 
         .replenishment-header {
@@ -1165,13 +1173,13 @@ app_ui = ui.page_fluid(
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 5px;
+            gap: 4px;
             width: 100%;
         }
 
         .replenishment-label {
             display: inline-block;
-            font-size: 12px;
+            font-size: 11px;
             color: #555;
             margin-right: 0;
             vertical-align: middle;
@@ -1182,31 +1190,33 @@ app_ui = ui.page_fluid(
         }
 
         .delivery-table input[type="text"] {
-            width: 55px !important;
-            min-width: 55px !important;
-            max-width: 55px !important;
-            height: 32px !important;
-            padding: 3px !important;
+            width: 52px !important;
+            min-width: 52px !important;
+            max-width: 52px !important;
+            height: 30px !important;
+            padding: 2px !important;
             text-align: center;
             box-sizing: border-box;
+            font-size: 13px;
         }
 
         input[id^="replenishment_week_"] {
-            width: 55px !important;
-            min-width: 55px !important;
-            max-width: 55px !important;
-            height: 32px !important;
-            padding: 3px !important;
+            width: 52px !important;
+            min-width: 52px !important;
+            max-width: 52px !important;
+            height: 30px !important;
+            padding: 2px !important;
             text-align: center;
             box-sizing: border-box;
             cursor: pointer;
+            font-size: 13px;
         }
 
         .month-header {
             background-color: #fafafa !important;
-            font-size: 13px;
+            font-size: 12px;
             color: #555;
-            height: 28px;
+            height: 27px;
         }
 
         .blocked-cell {
@@ -1239,7 +1249,7 @@ app_ui = ui.page_fluid(
         .percentage-row td {
             background-color: #f8f8f8;
             color: #555;
-            font-size: 13px;
+            font-size: 12px;
         }
 
         .send-controls {
@@ -1252,7 +1262,7 @@ app_ui = ui.page_fluid(
         }
 
         .notes-label {
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 600;
             color: #555;
             margin-bottom: 8px;
@@ -1267,7 +1277,7 @@ app_ui = ui.page_fluid(
             padding: 10px;
             box-sizing: border-box;
             font-family: Arial, sans-serif;
-            font-size: 14px;
+            font-size: 13px;
         }
 
         .success-box {
@@ -1312,13 +1322,13 @@ app_ui = ui.page_fluid(
             font-weight: 600;
             text-align: center;
             flex: 1;
-            font-size: 14px;
+            font-size: 13px;
         }
 
         .week-picker-nav {
             border: none;
             background: transparent;
-            font-size: 24px;
+            font-size: 23px;
             cursor: pointer;
             width: 30px;
             height: 30px;
@@ -1331,7 +1341,7 @@ app_ui = ui.page_fluid(
         }
 
         .week-picker-label {
-            font-size: 12px;
+            font-size: 11px;
             color: #666;
             text-align: center;
             margin-bottom: 8px;
@@ -1348,9 +1358,9 @@ app_ui = ui.page_fluid(
             border: 1px solid #d0d2d5;
             background: white;
             border-radius: 4px;
-            padding: 7px;
+            padding: 6px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 13px;
             text-align: center;
         }
 
