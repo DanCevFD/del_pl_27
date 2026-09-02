@@ -546,10 +546,13 @@ app_ui = ui.page_fluid(
         # JAVASCRIPT FOR REPLENISHMENT CALENDAR
         # ====================================================
         #
-        # Shiny's date input uses Bootstrap Datepicker.
+        # The calendar is displayed as a week selector.
         #
-        # calendarWeeks is enabled here because it is not
-        # directly exposed as a Python input_date argument.
+        # Individual day numbers are hidden.
+        # The ISO week number is shown instead.
+        #
+        # Clicking a week number selects the Monday of
+        # that week.
         #
         # ====================================================
 
@@ -577,8 +580,80 @@ app_ui = ui.page_fluid(
 
                 datepicker.fill();
 
+
+                const picker =
+                    datepicker.picker;
+
+                if (!picker) {
+                    return;
+                }
+
+
+                /*
+                 * Hide individual day numbers.
+                 */
+
+                picker
+                    .find(
+                        ".datepicker-days tbody td:not(.cw)"
+                    )
+                    .css(
+                        "visibility",
+                        "hidden"
+                    );
+
+
+                /*
+                 * Make the week-number column clearly
+                 * selectable.
+                 */
+
+                picker
+                    .find(
+                        ".datepicker-days tbody td.cw"
+                    )
+                    .css({
+                        "visibility": "visible",
+                        "cursor": "pointer",
+                        "font-size": "13px",
+                        "font-weight": "600",
+                        "width": "45px"
+                    });
+
+
+                /*
+                 * Hide the weekday names because the user
+                 * is selecting a week rather than a day.
+                 */
+
+                picker
+                    .find(
+                        ".datepicker-days thead tr:nth-child(2)"
+                    )
+                    .hide();
+
+
+                /*
+                 * Make the week number header clear.
+                 */
+
+                picker
+                    .find(
+                        ".datepicker-days thead th.cw"
+                    )
+                    .text("Week")
+                    .css({
+                        "font-size": "12px",
+                        "font-weight": "600"
+                    });
+
             }
 
+
+            /*
+             * Enable the week display whenever the datepicker
+             * is rendered or opened.
+             */
 
             $(document).on(
                 "shiny:value",
@@ -605,6 +680,88 @@ app_ui = ui.page_fluid(
 
                 }
             );
+
+
+            /*
+             * Clicking a week number selects the Monday
+             * belonging to that week.
+             */
+
+            $(document).on(
+                "click",
+                "#replenishment_week + .input-group-addon, " +
+                "#replenishment_week ~ .datepicker .cw",
+                function() {
+
+                    const input =
+                        $("#replenishment_week");
+
+                    const datepicker =
+                        input.data("datepicker");
+
+                    if (!datepicker) {
+                        return;
+                    }
+
+                    const row =
+                        $(this).closest("tr");
+
+                    const firstDay =
+                        row.find(
+                            "td.day"
+                        ).first();
+
+                    if (!firstDay.length) {
+                        return;
+                    }
+
+                    const dateValue =
+                        firstDay.data("date");
+
+                    if (!dateValue) {
+                        return;
+                    }
+
+                    const selectedDate =
+                        new Date(
+                            Number(dateValue)
+                        );
+
+                    /*
+                     * Convert the first visible day of the
+                     * row to the Monday of that ISO week.
+                     */
+
+                    const day =
+                        selectedDate.getDay();
+
+                    const monday =
+                        new Date(
+                            selectedDate
+                        );
+
+                    monday.setDate(
+                        selectedDate.getDate()
+                        - ((day + 6) % 7)
+                    );
+
+
+                    datepicker.setDate(
+                        monday
+                    );
+
+                    input.trigger(
+                        "change"
+                    );
+
+                    setTimeout(
+                        enableReplenishmentWeekNumbers,
+                        50
+                    );
+
+                }
+            );
+
 
         })();
 
@@ -762,16 +919,19 @@ app_ui = ui.page_fluid(
 
         .replenishment-header {
             white-space: normal !important;
-            line-height: 1.1;
-            width: 75px !important;
-            min-width: 75px !important;
-            max-width: 75px !important;
+            line-height: 1.05;
+            width: 85px !important;
+            min-width: 85px !important;
+            max-width: 85px !important;
+            font-size: 12px !important;
+            padding-left: 5px !important;
+            padding-right: 5px !important;
         }
 
         .replenishment-cell {
-            width: 75px !important;
-            min-width: 75px !important;
-            max-width: 75px !important;
+            width: 85px !important;
+            min-width: 85px !important;
+            max-width: 85px !important;
             white-space: normal !important;
         }
 
@@ -780,16 +940,16 @@ app_ui = ui.page_fluid(
         }
 
         .replenishment-cell .form-control {
-            width: 68px !important;
-            min-width: 68px !important;
-            max-width: 68px !important;
+            width: 78px !important;
+            min-width: 78px !important;
+            max-width: 78px !important;
             padding: 4px !important;
             font-size: 12px !important;
             text-align: center;
         }
 
         .replenishment-cell .input-group {
-            width: 68px !important;
+            width: 78px !important;
         }
 
         .datepicker {
@@ -805,6 +965,20 @@ app_ui = ui.page_fluid(
             background-color: #f5f5f5;
             font-size: 11px;
             font-weight: 600;
+        }
+
+        /*
+         * Hide individual day numbers in the replenishment
+         * calendar, leaving the week numbers visible.
+         */
+
+        #replenishment_week
+            + .input-group
+            .datepicker
+            .datepicker-days
+            tbody
+            td.day {
+            visibility: hidden;
         }
 
         .success-box {
