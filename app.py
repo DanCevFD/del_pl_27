@@ -546,13 +546,25 @@ app_ui = ui.page_fluid(
         # JAVASCRIPT FOR REPLENISHMENT CALENDAR
         # ====================================================
         #
-        # The calendar is displayed as a week selector.
+        # IMPORTANT:
         #
-        # Individual day numbers are hidden.
-        # The ISO week number is shown instead.
+        # The Shiny input_date() still stores a DATE internally.
         #
-        # Clicking a week number selects the Monday of
-        # that week.
+        # The visible calendar, however, is converted into a
+        # WEEK selector.
+        #
+        # The user sees:
+        #
+        #       Week
+        #        35
+        #        36
+        #        37
+        #        38
+        #
+        # instead of individual day numbers.
+        #
+        # Clicking a week number stores the Monday belonging
+        # to that week in the Shiny date input.
         #
         # ====================================================
 
@@ -560,7 +572,14 @@ app_ui = ui.page_fluid(
 
         (function() {
 
-            function enableReplenishmentWeekNumbers() {
+
+            /*
+             * ==================================================
+             * APPLY WEEK SELECTOR
+             * ==================================================
+             */
+
+            function applyWeekSelector() {
 
                 const input =
                     $("#replenishment_week");
@@ -569,6 +588,7 @@ app_ui = ui.page_fluid(
                     return;
                 }
 
+
                 const datepicker =
                     input.data("datepicker");
 
@@ -576,65 +596,48 @@ app_ui = ui.page_fluid(
                     return;
                 }
 
-                datepicker.calendarWeeks = true;
 
-                datepicker.fill();
+                /*
+                 * ------------------------------------------------
+                 * IMPORTANT FIX
+                 * ------------------------------------------------
+                 *
+                 * calendarWeeks belongs to the datepicker
+                 * options object.
+                 *
+                 * It should NOT be assigned as:
+                 *
+                 *     datepicker.calendarWeeks = true
+                 *
+                 * Instead:
+                 */
+
+                if (
+                    datepicker.o
+                    &&
+                    datepicker.o.calendarWeeks !== true
+                ) {
+
+                    datepicker.o.calendarWeeks =
+                        true;
+
+                    datepicker.fill();
+
+                }
 
 
                 const picker =
                     datepicker.picker;
 
-                if (!picker) {
+                if (!picker || !picker.length) {
                     return;
                 }
 
 
                 /*
-                 * Hide individual day numbers.
-                 */
-
-                picker
-                    .find(
-                        ".datepicker-days tbody td:not(.cw)"
-                    )
-                    .css(
-                        "visibility",
-                        "hidden"
-                    );
-
-
-                /*
-                 * Make the week-number column clearly
-                 * selectable.
-                 */
-
-                picker
-                    .find(
-                        ".datepicker-days tbody td.cw"
-                    )
-                    .css({
-                        "visibility": "visible",
-                        "cursor": "pointer",
-                        "font-size": "13px",
-                        "font-weight": "600",
-                        "width": "45px"
-                    });
-
-
-                /*
-                 * Hide the weekday names because the user
-                 * is selecting a week rather than a day.
-                 */
-
-                picker
-                    .find(
-                        ".datepicker-days thead tr:nth-child(2)"
-                    )
-                    .hide();
-
-
-                /*
-                 * Make the week number header clear.
+                 * ------------------------------------------------
+                 * WEEK NUMBER HEADER
+                 * ------------------------------------------------
                  */
 
                 picker
@@ -643,24 +646,585 @@ app_ui = ui.page_fluid(
                     )
                     .text("Week")
                     .css({
-                        "font-size": "12px",
-                        "font-weight": "600"
+                        "display":
+                            "table-cell",
+
+                        "visibility":
+                            "visible",
+
+                        "width":
+                            "45px",
+
+                        "min-width":
+                            "45px",
+
+                        "font-size":
+                            "12px",
+
+                        "font-weight":
+                            "700",
+
+                        "text-align":
+                            "center"
+                    });
+
+
+                /*
+                 * ------------------------------------------------
+                 * HIDE WEEKDAY NAMES
+                 * ------------------------------------------------
+                 */
+
+                picker
+                    .find(
+                        ".datepicker-days thead tr"
+                    )
+                    .eq(1)
+                    .hide();
+
+
+                /*
+                 * ------------------------------------------------
+                 * HIDE DAY NUMBERS
+                 * ------------------------------------------------
+                 *
+                 * We use visibility rather than display:none.
+                 *
+                 * This is important because the hidden day cells
+                 * are still used to determine which Monday belongs
+                 * to each week.
+                 */
+
+                picker
+                    .find(
+                        ".datepicker-days tbody td.day"
+                    )
+                    .css({
+
+                        "visibility":
+                            "hidden",
+
+                        "cursor":
+                            "default"
+
+                    });
+
+
+                /*
+                 * ------------------------------------------------
+                 * STYLE WEEK NUMBER CELLS
+                 * ------------------------------------------------
+                 */
+
+                picker
+                    .find(
+                        ".datepicker-days tbody td.cw"
+                    )
+                    .css({
+
+                        "display":
+                            "table-cell",
+
+                        "visibility":
+                            "visible",
+
+                        "width":
+                            "45px",
+
+                        "min-width":
+                            "45px",
+
+                        "height":
+                            "32px",
+
+                        "font-size":
+                            "14px",
+
+                        "font-weight":
+                            "700",
+
+                        "text-align":
+                            "center",
+
+                        "vertical-align":
+                            "middle",
+
+                        "cursor":
+                            "pointer",
+
+                        "background-color":
+                            "#f0f1f3",
+
+                        "color":
+                            "#333"
+
+                    });
+
+
+                /*
+                 * ------------------------------------------------
+                 * HIGHLIGHT SELECTED WEEK
+                 * ------------------------------------------------
+                 */
+
+                const selectedValue =
+                    input.val();
+
+
+                /*
+                 * Reset previous highlighting.
+                 */
+
+                picker
+                    .find(
+                        ".datepicker-days tbody td.cw"
+                    )
+                    .css({
+
+                        "background-color":
+                            "#f0f1f3",
+
+                        "color":
+                            "#333"
+
+                    });
+
+
+                if (!selectedValue) {
+                    return;
+                }
+
+
+                const selectedDate =
+                    new Date(
+                        selectedValue
+                        + "T00:00:00"
+                    );
+
+
+                if (
+                    isNaN(
+                        selectedDate.getTime()
+                    )
+                ) {
+                    return;
+                }
+
+
+                /*
+                 * Find Monday of selected week.
+                 */
+
+                const selectedDay =
+                    selectedDate.getDay();
+
+
+                const selectedMonday =
+                    new Date(
+                        selectedDate
+                    );
+
+
+                selectedMonday.setDate(
+                    selectedDate.getDate()
+                    -
+                    ((selectedDay + 6) % 7)
+                );
+
+
+                selectedMonday.setHours(
+                    0,
+                    0,
+                    0,
+                    0
+                );
+
+
+                /*
+                 * Check every calendar row.
+                 */
+
+                picker
+                    .find(
+                        ".datepicker-days tbody tr"
+                    )
+                    .each(function() {
+
+                        const row =
+                            $(this);
+
+
+                        const weekCell =
+                            row.find(
+                                "td.cw"
+                            );
+
+
+                        if (!weekCell.length) {
+                            return;
+                        }
+
+
+                        /*
+                         * Find the first day in this row.
+                         */
+
+                        const firstDay =
+                            row.find(
+                                "td.day"
+                            ).first();
+
+
+                        if (!firstDay.length) {
+                            return;
+                        }
+
+
+                        const dateValue =
+                            firstDay.attr(
+                                "data-date"
+                            );
+
+
+                        if (!dateValue) {
+                            return;
+                        }
+
+
+                        const rowDate =
+                            new Date(
+                                Number(
+                                    dateValue
+                                )
+                            );
+
+
+                        const rowDay =
+                            rowDate.getDay();
+
+
+                        rowDate.setDate(
+                            rowDate.getDate()
+                            -
+                            ((rowDay + 6) % 7)
+                        );
+
+
+                        rowDate.setHours(
+                            0,
+                            0,
+                            0,
+                            0
+                        );
+
+
+                        if (
+                            rowDate.getFullYear()
+                            ===
+                            selectedMonday.getFullYear()
+                            &&
+                            rowDate.getMonth()
+                            ===
+                            selectedMonday.getMonth()
+                            &&
+                            rowDate.getDate()
+                            ===
+                            selectedMonday.getDate()
+                        ) {
+
+                            weekCell.css({
+
+                                "background-color":
+                                    "#337ab7",
+
+                                "color":
+                                    "white"
+
+                            });
+
+                        }
+
                     });
 
             }
 
 
             /*
-             * Enable the week display whenever the datepicker
-             * is rendered or opened.
+             * ==================================================
+             * CLICK ON INPUT
+             * ==================================================
              */
 
             $(document).on(
-                "shiny:value",
-                function(event) {
+                "click",
+                "#replenishment_week",
+                function() {
+
+                    /*
+                     * Bootstrap-datepicker opens after the
+                     * click event, so wait until it exists.
+                     */
 
                     setTimeout(
-                        enableReplenishmentWeekNumbers,
+                        applyWeekSelector,
+                        50
+                    );
+
+                    setTimeout(
+                        applyWeekSelector,
+                        150
+                    );
+
+                    setTimeout(
+                        applyWeekSelector,
+                        300
+                    );
+
+                }
+            );
+
+
+            /*
+             * ==================================================
+             * FOCUS ON INPUT
+             * ==================================================
+             */
+
+            $(document).on(
+                "focus",
+                "#replenishment_week",
+                function() {
+
+                    setTimeout(
+                        applyWeekSelector,
+                        100
+                    );
+
+                    setTimeout(
+                        applyWeekSelector,
+                        300
+                    );
+
+                }
+            );
+
+
+            /*
+             * ==================================================
+             * CLICK WEEK NUMBER
+             * ==================================================
+             *
+             * IMPORTANT:
+             *
+             * The datepicker popup is normally attached elsewhere
+             * in the document, so we listen globally for:
+             *
+             *     .datepicker-days tbody td.cw
+             *
+             * rather than assuming it is a sibling of the input.
+             *
+             * ==================================================
+             */
+
+            $(document).on(
+                "click.weekSelector",
+                ".datepicker-days tbody td.cw",
+                function(event) {
+
+                    event.preventDefault();
+
+                    event.stopPropagation();
+
+
+                    const weekCell =
+                        $(this);
+
+
+                    const picker =
+                        weekCell.closest(
+                            ".datepicker"
+                        );
+
+
+                    /*
+                     * Only respond to the replenishment calendar.
+                     */
+
+                    if (
+                        !picker.length
+                        ||
+                        !picker.is(
+                            ":visible"
+                        )
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    const input =
+                        $("#replenishment_week");
+
+
+                    if (!input.length) {
+                        return;
+                    }
+
+
+                    const datepicker =
+                        input.data(
+                            "datepicker"
+                        );
+
+
+                    if (!datepicker) {
+                        return;
+                    }
+
+
+                    /*
+                     * Find the calendar row.
+                     */
+
+                    const row =
+                        weekCell.closest(
+                            "tr"
+                        );
+
+
+                    /*
+                     * Find the actual day cells.
+                     *
+                     * These are hidden visually but remain in
+                     * the DOM.
+                     */
+
+                    const dayCells =
+                        row.find(
+                            "td.day"
+                        );
+
+
+                    if (!dayCells.length) {
+                        return;
+                    }
+
+
+                    /*
+                     * Get the first actual date in the week.
+                     */
+
+                    let firstDate =
+                        null;
+
+
+                    dayCells.each(
+                        function() {
+
+                            if (firstDate !== null) {
+                                return;
+                            }
+
+
+                            const dateValue =
+                                $(this).attr(
+                                    "data-date"
+                                );
+
+
+                            if (
+                                dateValue !== undefined
+                            ) {
+
+                                firstDate =
+                                    new Date(
+                                        Number(
+                                            dateValue
+                                        )
+                                    );
+
+                            }
+
+                        }
+                    );
+
+
+                    if (!firstDate) {
+                        return;
+                    }
+
+
+                    /*
+                     * Convert the first day to Monday.
+                     *
+                     * JavaScript:
+                     *
+                     * Sunday = 0
+                     * Monday = 1
+                     * Tuesday = 2
+                     * ...
+                     */
+
+                    const day =
+                        firstDate.getDay();
+
+
+                    const monday =
+                        new Date(
+                            firstDate
+                        );
+
+
+                    monday.setDate(
+                        firstDate.getDate()
+                        -
+                        ((day + 6) % 7)
+                    );
+
+
+                    monday.setHours(
+                        0,
+                        0,
+                        0,
+                        0
+                    );
+
+
+                    /*
+                     * Set the selected Monday in the Shiny
+                     * datepicker.
+                     */
+
+                    datepicker.setDate(
+                        monday
+                    );
+
+
+                    /*
+                     * Explicitly notify Shiny that the value
+                     * changed.
+                     */
+
+                    input.trigger(
+                        "change"
+                    );
+
+
+                    /*
+                     * Close the calendar.
+                     */
+
+                    datepicker.hide();
+
+
+                    /*
+                     * Reapply the formatting after the
+                     * datepicker redraws.
+                     */
+
+                    setTimeout(
+                        applyWeekSelector,
                         100
                     );
 
@@ -668,95 +1232,19 @@ app_ui = ui.page_fluid(
             );
 
 
-            $(document).on(
-                "click",
-                "#replenishment_week",
-                function() {
-
-                    setTimeout(
-                        enableReplenishmentWeekNumbers,
-                        50
-                    );
-
-                }
-            );
-
-
             /*
-             * Clicking a week number selects the Monday
-             * belonging to that week.
+             * ==================================================
+             * SHINY RE-RENDER
+             * ==================================================
              */
 
             $(document).on(
-                "click",
-                "#replenishment_week + .input-group-addon, " +
-                "#replenishment_week ~ .datepicker .cw",
+                "shiny:value",
                 function() {
 
-                    const input =
-                        $("#replenishment_week");
-
-                    const datepicker =
-                        input.data("datepicker");
-
-                    if (!datepicker) {
-                        return;
-                    }
-
-                    const row =
-                        $(this).closest("tr");
-
-                    const firstDay =
-                        row.find(
-                            "td.day"
-                        ).first();
-
-                    if (!firstDay.length) {
-                        return;
-                    }
-
-                    const dateValue =
-                        firstDay.data("date");
-
-                    if (!dateValue) {
-                        return;
-                    }
-
-                    const selectedDate =
-                        new Date(
-                            Number(dateValue)
-                        );
-
-                    /*
-                     * Convert the first visible day of the
-                     * row to the Monday of that ISO week.
-                     */
-
-                    const day =
-                        selectedDate.getDay();
-
-                    const monday =
-                        new Date(
-                            selectedDate
-                        );
-
-                    monday.setDate(
-                        selectedDate.getDate()
-                        - ((day + 6) % 7)
-                    );
-
-
-                    datepicker.setDate(
-                        monday
-                    );
-
-                    input.trigger(
-                        "change"
-                    );
-
                     setTimeout(
-                        enableReplenishmentWeekNumbers,
-                        50
+                        applyWeekSelector,
+                        100
                     );
 
                 }
@@ -960,26 +1448,26 @@ app_ui = ui.page_fluid(
             margin: 0 auto;
         }
 
+        /*
+         * Week-number column.
+         */
+
         .datepicker .cw {
-            color: #777;
-            background-color: #f5f5f5;
-            font-size: 11px;
-            font-weight: 600;
+            color: #333;
+            background-color: #f0f1f3;
+            font-size: 14px;
+            font-weight: 700;
+            text-align: center;
+            cursor: pointer;
         }
 
         /*
-         * Hide individual day numbers in the replenishment
-         * calendar, leaving the week numbers visible.
+         * Do NOT hide day cells here with CSS.
+         *
+         * JavaScript handles this because the hidden cells
+         * are still required to calculate the Monday of each
+         * week.
          */
-
-        #replenishment_week
-            + .input-group
-            .datepicker
-            .datepicker-days
-            tbody
-            td.day {
-            visibility: hidden;
-        }
 
         .success-box {
             margin-top: 25px;
