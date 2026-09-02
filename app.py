@@ -1,8 +1,9 @@
+```python
 from shiny import App, ui, render, reactive, Inputs, Outputs, Session
 import pandas as pd
 import re
 from urllib.parse import quote
-from datetime import date, timedelta
+from datetime import date
 
 
 # ============================================================
@@ -11,22 +12,52 @@ from datetime import date, timedelta
 
 APP_TITLE = "Delivery Information"
 
+
+# ============================================================
+# EMAIL CONFIGURATION
+# ============================================================
+#
+# MAIN EMAIL
+#
 OWNER_EMAIL = "Stephan.Gilis@unitedbeetseeds.org"
+
+
+# ------------------------------------------------------------
+# CC EMAIL
+#
 SECOND_OWNER_EMAIL = "Danny.Cevallos@unitedbeetseeds.org"
 
 
 # ============================================================
-# LOAD DATA
+# LOAD CSV
 # ============================================================
 
 try:
-    df = pd.read_csv("items_week.csv")
+
+    country_df = pd.read_csv(
+        "items_week.csv"
+    )
+
 except Exception as e:
-    raise RuntimeError(f"Could not load items_week.csv: {e}")
+
+    raise RuntimeError(
+        f"Could not read items_week.csv: {e}"
+    )
 
 
-df.columns = df.columns.str.strip()
+# ============================================================
+# CLEAN COLUMN NAMES
+# ============================================================
 
+country_df.columns = (
+    country_df.columns
+    .str.strip()
+)
+
+
+# ============================================================
+# REQUIRED COLUMNS
+# ============================================================
 
 required_columns = [
     "DST",
@@ -35,1277 +66,1367 @@ required_columns = [
     "min_week",
     "max_week",
     "DESTINATION_NAME",
-    "ord",
+    "ord"
 ]
 
 
 missing_columns = [
-    col for col in required_columns
-    if col not in df.columns
+    column
+    for column in required_columns
+    if column not in country_df.columns
 ]
 
+
 if missing_columns:
+
     raise ValueError(
-        "The following required columns are missing from "
-        f"items_week.csv: {missing_columns}"
+        "items_week.csv is missing the following columns: "
+        + ", ".join(missing_columns)
     )
 
 
 # ============================================================
-# CLEAN DATA
+# CLEAN TEXT COLUMNS
 # ============================================================
 
-df["DESTINATION_NAME"] = (
-    df["DESTINATION_NAME"]
+country_df["DST"] = (
+    country_df["DST"]
+    .fillna("")
     .astype(str)
     .str.strip()
 )
 
-df["DST"] = (
-    df["DST"]
+
+country_df["DESTINATION_NAME"] = (
+    country_df["DESTINATION_NAME"]
+    .fillna("")
     .astype(str)
     .str.strip()
 )
 
-df["min_date"] = pd.to_datetime(
-    df["min_date"],
+
+# ============================================================
+# CLEAN DATE COLUMNS
+# ============================================================
+
+country_df["min_date"] = pd.to_datetime(
+    country_df["min_date"],
     errors="coerce"
 )
 
-df["max_date"] = pd.to_datetime(
-    df["max_date"],
+
+country_df["max_date"] = pd.to_datetime(
+    country_df["max_date"],
     errors="coerce"
 )
 
-df["min_week"] = pd.to_numeric(
-    df["min_week"],
+
+# ============================================================
+# CLEAN NUMERIC COLUMNS
+# ============================================================
+
+country_df["min_week"] = pd.to_numeric(
+    country_df["min_week"],
     errors="coerce"
 )
 
-df["max_week"] = pd.to_numeric(
-    df["max_week"],
+
+country_df["max_week"] = pd.to_numeric(
+    country_df["max_week"],
     errors="coerce"
 )
 
-df["ord"] = pd.to_numeric(
-    df["ord"],
-    errors="coerce"
-).fillna(0)
 
-df = df[
-    df["DESTINATION_NAME"].notna()
-    & (df["DESTINATION_NAME"] != "")
+country_df["ord"] = pd.to_numeric(
+    country_df["ord"],
+    errors="coerce"
+)
+
+
+# ============================================================
+# REMOVE INVALID DESTINATIONS
+# ============================================================
+
+country_df = country_df[
+    country_df["DESTINATION_NAME"] != ""
 ].copy()
 
 
-# Keep one row per destination
-country_df = (
-    df
-    .drop_duplicates(subset=["DESTINATION_NAME"])
-    .copy()
-)
-
-
-destinations = sorted(
-    country_df["DESTINATION_NAME"].tolist()
-)
-
-
-# ============================================================
-# HELPER FUNCTIONS
-# ============================================================
-
-def get_month_for_week(week, country):
-    """
-    Determine the month associated with a week for a country.
-    """
-
-    row = country_df[
-        country_df["DESTINATION_NAME"] == country
+country_df = country_df.dropna(
+    subset=[
+        "min_week",
+        "max_week"
     ]
+)
 
-    if row.empty:
-        return ""
 
-    row = row.iloc[0]
+# ============================================================
+# CONVERT WEEK NUMBERS TO INTEGER
+# ============================================================
 
-    min_date = row["min_date"]
+country_df["min_week"] = (
+    country_df["min_week"]
+    .astype(int)
+)
+
+
+country_df["max_week"] = (
+    country_df["max_week"]
+    .astype(int)
+)
+
+
+# ============================================================
+# REMOVE DUPLICATE DESTINATIONS
+# ============================================================
+
+country_df = (
+    country_df
+    .drop_duplicates(
+        subset=[
+            "DESTINATION_NAME"
+        ]
+    )
+    .reset_index(drop=True)
+)
+
+
+# ============================================================
+# DESTINATION LIST
+# ============================================================
+
+destinations = (
+    country_df[
+        "DESTINATION_NAME"
+    ]
+    .sort_values()
+    .tolist()
+)
+
+
+# ============================================================
+# MONTH CALCULATION
+# ============================================================
+
+def get_month_for_week(
+    week,
+    country
+):
+
+    min_week = int(
+        country["min_week"]
+    )
+
+    min_date = country["min_date"]
 
     if pd.isna(min_date):
+
         return ""
 
-    try:
-        min_date = min_date.date()
-    except Exception:
-        pass
-
-    try:
-        week = int(week)
-    except Exception:
-        return ""
-
-    monday = (
+    min_date = pd.Timestamp(
         min_date
-        - timedelta(days=min_date.weekday())
-        + timedelta(weeks=week - int(row["min_week"]))
     )
 
-    return monday.strftime("%B")
+    week_difference = (
+        int(week)
+        - min_week
+    )
 
+    calculated_date = (
+        min_date
+        + pd.Timedelta(
+            weeks=week_difference
+        )
+    )
+
+    max_date = country["max_date"]
+
+    if not pd.isna(max_date):
+
+        max_date = pd.Timestamp(
+            max_date
+        )
+
+        if calculated_date > max_date:
+
+            calculated_date = max_date
+
+    return calculated_date.strftime(
+        "%B"
+    )
+
+
+# ============================================================
+# FORMAT ORD
+# ============================================================
 
 def format_ord(value):
+
+    if pd.isna(value):
+
+        return ""
+
     try:
-        value = float(value)
 
-        if value.is_integer():
-            return str(int(value))
+        numeric_value = float(
+            value
+        )
 
-        return f"{value:,.0f}"
+        if numeric_value.is_integer():
+
+            return str(
+                int(numeric_value)
+            )
+
+        return str(
+            numeric_value
+        )
 
     except Exception:
-        return "0"
+
+        return str(
+            value
+        )
 
 
-def create_r_vector(values):
-    """
-    Create an R vector string.
-    """
+# ============================================================
+# FORMAT R VECTOR
+# ============================================================
 
-    if not values:
-        return "c()"
+def create_r_vector(
+    submission_df
+):
 
-    formatted = []
+    columns = [
+        "DST",
+        "DESTINATION",
+        "WEEK",
+        "qty",
+        "percent"
+    ]
 
-    for value in values:
-        formatted.append(str(value))
+    data = submission_df.copy()
 
-    max_len = max(
-        len(x)
-        for x in formatted
+    # --------------------------------------------------------
+    # Convert everything to strings
+    # --------------------------------------------------------
+
+    for column in columns:
+
+        data[column] = (
+            data[column]
+            .astype(str)
+        )
+
+    # --------------------------------------------------------
+    # Calculate column widths
+    # --------------------------------------------------------
+
+    widths = {}
+
+    for column in columns:
+
+        maximum = max(
+            len(column),
+            max(
+                len(value)
+                for value in data[column]
+            )
+        )
+
+        widths[column] = maximum
+
+    # --------------------------------------------------------
+    # Header
+    # --------------------------------------------------------
+
+    header_parts = []
+
+    for column in columns:
+
+        header_parts.append(
+            column.ljust(
+                widths[column]
+            )
+        )
+
+    header_line = (
+        " ; ".join(
+            header_parts
+        )
+        .rstrip()
     )
 
-    return (
-        "c(\n    "
-        + ",\n    ".join(
-            x.ljust(max_len)
-            for x in formatted
+    lines = [
+        header_line
+    ]
+
+    # --------------------------------------------------------
+    # Data rows
+    # --------------------------------------------------------
+
+    for _, row in data.iterrows():
+
+        parts = []
+
+        for column in columns:
+
+            value = str(
+                row[column]
+            )
+
+            if column in [
+                "DST",
+                "DESTINATION"
+            ]:
+
+                formatted = value.ljust(
+                    widths[column]
+                )
+
+            else:
+
+                formatted = value.rjust(
+                    widths[column]
+                )
+
+            parts.append(
+                formatted
+            )
+
+        lines.append(
+            " ; ".join(
+                parts
+            )
+        )
+
+    # --------------------------------------------------------
+    # Convert to R strings
+    # --------------------------------------------------------
+
+    quoted_lines = []
+
+    for line in lines:
+
+        safe_line = (
+            line
+            .replace(
+                "\\",
+                "\\\\"
+            )
+            .replace(
+                '"',
+                '\\"'
+            )
+        )
+
+        quoted_lines.append(
+            f'"{safe_line}"'
+        )
+
+    # --------------------------------------------------------
+    # Final c()
+    # --------------------------------------------------------
+
+    r_vector = (
+        "c(\n"
+        + ",\n".join(
+            quoted_lines
         )
         + "\n)"
     )
 
-
-# ============================================================
-# CALENDAR LIMITS
-# ============================================================
-
-today = date.today()
-
-current_week_start = (
-    today
-    - timedelta(days=today.weekday())
-)
-
-next_year_end = date(
-    today.year + 1,
-    12,
-    31
-)
+    return r_vector
 
 
 # ============================================================
-# UI
+# USER INTERFACE
 # ============================================================
 
 app_ui = ui.page_fluid(
 
     ui.tags.head(
 
-        ui.tags.title(APP_TITLE),
+        ui.tags.title(
+            APP_TITLE
+        ),
 
         # ====================================================
-        # OUTLOOK JAVASCRIPT
+        # JAVASCRIPT FOR REMOTE OUTLOOK
         # ====================================================
 
-        ui.tags.script(
-            """
-            var outlookWindow = null;
+        ui.tags.script("""
 
-            $(document).on("click", "#send", function() {
+        (function() {
 
-                if (
-                    outlookWindow === null ||
-                    outlookWindow.closed
-                ) {
+            let outlookWindow = null;
+
+            document.addEventListener(
+                "click",
+                function(event) {
+
+                    const button =
+                        event.target.closest(
+                            "#send"
+                        );
+
+                    if (!button) {
+                        return;
+                    }
 
                     outlookWindow = window.open(
                         "about:blank",
-                        "outlookCompose",
-                        "width=1200,height=900"
+                        "_blank"
                     );
 
-                }
+                },
+                true
+            );
 
-            });
 
             Shiny.addCustomMessageHandler(
                 "open_outlook",
                 function(message) {
 
+                    const url = message.url;
+
+                    if (!url) {
+                        return;
+                    }
+
                     if (
-                        outlookWindow === null ||
-                        outlookWindow.closed
+                        outlookWindow &&
+                        !outlookWindow.closed
                     ) {
 
-                        outlookWindow = window.open(
-                            "about:blank",
-                            "outlookCompose",
-                            "width=1200,height=900"
-                        );
+                        outlookWindow.location.href =
+                            url;
+
+                        outlookWindow.focus();
 
                     }
 
-                    outlookWindow.location.href =
-                        message.url;
+                    else {
 
-                    outlookWindow.focus();
+                        window.location.href =
+                            url;
+
+                    }
 
                 }
             );
-            """
-        ),
+
+        })();
+
+        """),
 
 
         # ====================================================
-        # CUSTOM WEEK PICKER
+        # WEEK SELECTOR JAVASCRIPT
         # ====================================================
 
-        ui.tags.script(
-            """
-            (function() {
+        ui.tags.script("""
 
-                let picker = null;
-                let currentMonth = null;
-                let currentYear = null;
+        (function() {
+
+            let weekPicker = null;
+            let currentMonth = null;
+            let currentYear = null;
 
 
-                // ------------------------------------------------
-                // ISO WEEK NUMBER
-                // ------------------------------------------------
+            // ==================================================
+            // ISO WEEK NUMBER
+            // ==================================================
 
-                function getISOWeek(dateObj) {
+            function getISOWeek(dateObj) {
 
-                    const d = new Date(
+                const d = new Date(
+                    Date.UTC(
+                        dateObj.getFullYear(),
+                        dateObj.getMonth(),
+                        dateObj.getDate()
+                    )
+                );
+
+                const day =
+                    d.getUTCDay() || 7;
+
+                d.setUTCDate(
+                    d.getUTCDate()
+                    + 4
+                    - day
+                );
+
+                const yearStart =
+                    new Date(
                         Date.UTC(
-                            dateObj.getFullYear(),
-                            dateObj.getMonth(),
-                            dateObj.getDate()
+                            d.getUTCFullYear(),
+                            0,
+                            1
                         )
                     );
 
-                    const dayNum =
-                        d.getUTCDay() || 7;
-
-                    d.setUTCDate(
-                        d.getUTCDate()
-                        + 4
-                        - dayNum
-                    );
-
-                    const yearStart =
-                        new Date(
-                            Date.UTC(
-                                d.getUTCFullYear(),
-                                0,
-                                1
-                            )
-                        );
-
-                    return Math.ceil(
+                return Math.ceil(
+                    (
                         (
-                            (
-                                d - yearStart
-                            ) / 86400000
-                            + 1
-                        ) / 7
-                    );
+                            d - yearStart
+                        ) / 86400000
+                        + 1
+                    ) / 7
+                );
 
+            }
+
+
+            // ==================================================
+            // CREATE PICKER
+            // ==================================================
+
+            function createWeekPicker() {
+
+                if (weekPicker) {
+                    return;
                 }
 
+                weekPicker = $(
+                    "<div id='custom-week-picker'></div>"
+                );
+
+                $("body").append(
+                    weekPicker
+                );
+
+
+                weekPicker.on(
+                    "mousedown",
+                    function(event) {
+
+                        event.stopPropagation();
+
+                    }
+                );
+
+            }
+
+
+            // ==================================================
+            // POSITION PICKER
+            // ==================================================
+
+            function positionWeekPicker() {
+
+                const input =
+                    $("#replenishment_week");
+
+                if (
+                    !input.length ||
+                    !weekPicker
+                ) {
+                    return;
+                }
+
+                const offset =
+                    input.offset();
+
+                weekPicker.css({
+
+                    top:
+                        offset.top
+                        + input.outerHeight()
+                        + 4,
+
+                    left:
+                        offset.left
+
+                });
+
+            }
+
+
+            // ==================================================
+            // DRAW PICKER
+            // ==================================================
+
+            function drawWeekPicker() {
+
+                createWeekPicker();
+
+
+                const monthNames = [
+
+                    "January",
+                    "February",
+                    "March",
+                    "April",
+                    "May",
+                    "June",
+                    "July",
+                    "August",
+                    "September",
+                    "October",
+                    "November",
+                    "December"
+
+                ];
+
+
+                let html = "";
+
 
                 // ------------------------------------------------
-                // MONDAY OF ISO WEEK
+                // HEADER
                 // ------------------------------------------------
 
-                function getMonday(dateObj) {
+                html +=
+                    "<div class='week-picker-header'>";
+
+                html +=
+                    "<button " +
+                    "type='button' " +
+                    "class='week-picker-prev'>" +
+                    "&#8249;" +
+                    "</button>";
+
+                html +=
+                    "<div class='week-picker-title'>" +
+                    monthNames[currentMonth]
+                    + " "
+                    + currentYear
+                    + "</div>";
+
+                html +=
+                    "<button " +
+                    "type='button' " +
+                    "class='week-picker-next'>" +
+                    "&#8250;" +
+                    "</button>";
+
+                html +=
+                    "</div>";
+
+
+                // ------------------------------------------------
+                // WEEK LABEL
+                // ------------------------------------------------
+
+                html +=
+                    "<div class='week-picker-label'>" +
+                    "Week" +
+                    "</div>";
+
+
+                // ------------------------------------------------
+                // WEEKS
+                // ------------------------------------------------
+
+                html +=
+                    "<div class='week-picker-weeks'>";
+
+
+                const daysInMonth =
+                    new Date(
+                        currentYear,
+                        currentMonth + 1,
+                        0
+                    ).getDate();
+
+
+                /*
+                 * Only Mondays are displayed.
+                 *
+                 * Therefore January 2027 gives:
+                 *
+                 * Week 1
+                 * Week 2
+                 * Week 3
+                 * Week 4
+                 *
+                 * corresponding to:
+                 *
+                 * Jan 4
+                 * Jan 11
+                 * Jan 18
+                 * Jan 25
+                 */
+
+                for (
+                    let day = 1;
+                    day <= daysInMonth;
+                    day++
+                ) {
 
                     const d =
-                        new Date(dateObj);
-
-                    const day =
-                        d.getDay();
-
-                    const difference =
-                        day === 0
-                            ? -6
-                            : 1 - day;
-
-                    d.setDate(
-                        d.getDate()
-                        + difference
-                    );
-
-                    d.setHours(
-                        0, 0, 0, 0
-                    );
-
-                    return d;
-
-                }
-
-
-                // ------------------------------------------------
-                // CREATE PICKER
-                // ------------------------------------------------
-
-                function createPicker() {
-
-                    if (picker) {
-                        return;
-                    }
-
-                    picker = $(
-                        "<div id='custom-week-picker'></div>"
-                    );
-
-                    picker.css({
-
-                        position: "absolute",
-
-                        background: "#ffffff",
-
-                        border: "1px solid #ccc",
-
-                        borderRadius: "4px",
-
-                        boxShadow:
-                            "0 4px 12px rgba(0,0,0,0.15)",
-
-                        padding: "10px",
-
-                        width: "230px",
-
-                        zIndex: "99999",
-
-                        display: "none"
-
-                    });
-
-                    $("body").append(
-                        picker
-                    );
-
-
-                    // ------------------------------------------------
-                    // PREVENT CLICK FROM CLOSING PICKER
-                    // ------------------------------------------------
-
-                    picker.on(
-                        "mousedown",
-                        function(event) {
-
-                            event.stopPropagation();
-
-                        }
-                    );
-
-                }
-
-
-                // ------------------------------------------------
-                // POSITION PICKER
-                // ------------------------------------------------
-
-                function positionPicker() {
-
-                    const input =
-                        $("#replenishment_week");
-
-                    if (
-                        !input.length ||
-                        !picker
-                    ) {
-                        return;
-                    }
-
-                    const offset =
-                        input.offset();
-
-                    const height =
-                        input.outerHeight();
-
-                    picker.css({
-
-                        top:
-                            offset.top
-                            + height
-                            + 4,
-
-                        left:
-                            offset.left
-
-                    });
-
-                }
-
-
-                // ------------------------------------------------
-                // DRAW PICKER
-                // ------------------------------------------------
-
-                function drawPicker() {
-
-                    if (!picker) {
-                        createPicker();
-                    }
-
-                    if (
-                        currentMonth === null ||
-                        currentYear === null
-                    ) {
-                        const now =
-                            new Date();
-
-                        currentMonth =
-                            now.getMonth();
-
-                        currentYear =
-                            now.getFullYear();
-                    }
-
-
-                    const monthNames = [
-
-                        "January",
-                        "February",
-                        "March",
-                        "April",
-                        "May",
-                        "June",
-                        "July",
-                        "August",
-                        "September",
-                        "October",
-                        "November",
-                        "December"
-
-                    ];
-
-
-                    // ------------------------------------------------
-                    // HEADER
-                    // ------------------------------------------------
-
-                    let html = "";
-
-                    html +=
-                        "<div class='week-picker-header'>";
-
-                    html +=
-                        "<button " +
-                        "type='button' " +
-                        "class='week-picker-prev'>" +
-                        "&#8249;" +
-                        "</button>";
-
-                    html +=
-                        "<div class='week-picker-title'>" +
-                        monthNames[currentMonth]
-                        + " "
-                        + currentYear
-                        + "</div>";
-
-                    html +=
-                        "<button " +
-                        "type='button' " +
-                        "class='week-picker-next'>" +
-                        "&#8250;" +
-                        "</button>";
-
-                    html +=
-                        "</div>";
-
-
-                    // ------------------------------------------------
-                    // WEEK LIST
-                    // ------------------------------------------------
-
-                    html +=
-                        "<div class='week-picker-label'>" +
-                        "Week" +
-                        "</div>";
-
-                    html +=
-                        "<div class='week-picker-weeks'>";
-
-
-                    /*
-                        Only show Mondays that belong to the
-                        selected month.
-
-                        Therefore January 2027 gives:
-
-                        Week 1
-                        Week 2
-                        Week 3
-                        Week 4
-
-                        because the Mondays are:
-
-                        Jan 4
-                        Jan 11
-                        Jan 18
-                        Jan 25
-                    */
-
-                    const daysInMonth =
                         new Date(
                             currentYear,
-                            currentMonth + 1,
-                            0
-                        ).getDate();
+                            currentMonth,
+                            day
+                        );
 
 
-                    for (
-                        let day = 1;
-                        day <= daysInMonth;
-                        day++
+                    if (
+                        d.getDay() !== 1
                     ) {
 
-                        const d =
-                            new Date(
-                                currentYear,
-                                currentMonth,
-                                day
-                            );
-
-
-                        if (
-                            d.getDay() !== 1
-                        ) {
-                            continue;
-                        }
-
-
-                        const week =
-                            getISOWeek(d);
-
-
-                        html +=
-                            "<button " +
-                            "type='button' " +
-                            "class='week-number-button' " +
-                            "data-week='"
-                            + week
-                            + "' " +
-                            "data-date='"
-                            + d.getTime()
-                            + "'>" +
-                            week +
-                            "</button>";
+                        continue;
 
                     }
+
+
+                    const week =
+                        getISOWeek(d);
 
 
                     html +=
-                        "</div>";
-
-
-                    picker.html(
-                        html
-                    );
-
-
-                    // ------------------------------------------------
-                    // PREVIOUS MONTH
-                    // ------------------------------------------------
-
-                    picker.find(
-                        ".week-picker-prev"
-                    ).on(
-                        "click",
-                        function(event) {
-
-                            event.preventDefault();
-                            event.stopPropagation();
-
-                            currentMonth--;
-
-                            if (
-                                currentMonth < 0
-                            ) {
-
-                                currentMonth = 11;
-                                currentYear--;
-
-                            }
-
-                            drawPicker();
-
-                        }
-                    );
-
-
-                    // ------------------------------------------------
-                    // NEXT MONTH
-                    // ------------------------------------------------
-
-                    picker.find(
-                        ".week-picker-next"
-                    ).on(
-                        "click",
-                        function(event) {
-
-                            event.preventDefault();
-                            event.stopPropagation();
-
-                            currentMonth++;
-
-                            if (
-                                currentMonth > 11
-                            ) {
-
-                                currentMonth = 0;
-                                currentYear++;
-
-                            }
-
-                            drawPicker();
-
-                        }
-                    );
-
-
-                    // ------------------------------------------------
-                    // WEEK SELECTION
-                    // ------------------------------------------------
-
-                    picker.find(
-                        ".week-number-button"
-                    ).on(
-                        "click",
-                        function(event) {
-
-                            event.preventDefault();
-                            event.stopPropagation();
-
-                            const week =
-                                $(this)
-                                .data("week");
-
-                            const dateValue =
-                                $(this)
-                                .data("date");
-
-                            const selectedDate =
-                                new Date(
-                                    Number(dateValue)
-                                );
-
-
-                            // ----------------------------------------
-                            // Put WEEK NUMBER into visible input
-                            // ----------------------------------------
-
-                            const input =
-                                $("#replenishment_week");
-
-                            input.val(
-                                String(week)
-                            );
-
-
-                            // ----------------------------------------
-                            // Store useful internal date
-                            // ----------------------------------------
-
-                            input.attr(
-                                "data-week",
-                                String(week)
-                            );
-
-                            input.attr(
-                                "data-week-date",
-                                selectedDate
-                                .toISOString()
-                            );
-
-
-                            // ----------------------------------------
-                            // Tell Shiny that the value changed
-                            // ----------------------------------------
-
-                            input.trigger(
-                                "change"
-                            );
-
-                            input.trigger(
-                                "input"
-                            );
-
-
-                            // Shiny update
-                            if (
-                                typeof Shiny !==
-                                "undefined"
-                            ) {
-
-                                Shiny.setInputValue(
-                                    "replenishment_week",
-                                    String(week),
-                                    {
-                                        priority:
-                                            "event"
-                                    }
-                                );
-
-                            }
-
-
-                            // ----------------------------------------
-                            // Close picker
-                            // ----------------------------------------
-
-                            picker.hide();
-
-                        }
-                    );
-
-
-                    positionPicker();
+                        "<button " +
+                        "type='button' " +
+                        "class='week-number-button' " +
+                        "data-week='" +
+                        week +
+                        "'>" +
+                        week +
+                        "</button>";
 
                 }
 
 
-                // ------------------------------------------------
-                // OPEN PICKER
-                // ------------------------------------------------
-
-                function openPicker() {
-
-                    const input =
-                        $("#replenishment_week");
-
-                    if (!input.length) {
-                        return;
-                    }
-
-                    createPicker();
+                html +=
+                    "</div>";
 
 
-                    // If a month has not been selected yet,
-                    // use the current month.
-
-                    if (
-                        currentMonth === null ||
-                        currentYear === null
-                    ) {
-
-                        const now =
-                            new Date();
-
-                        currentMonth =
-                            now.getMonth();
-
-                        currentYear =
-                            now.getFullYear();
-
-                    }
+                weekPicker.html(
+                    html
+                );
 
 
-                    drawPicker();
+                // ==================================================
+                // PREVIOUS MONTH
+                // ==================================================
 
-                    positionPicker();
-
-                    picker.show();
-
-                }
-
-
-                // ------------------------------------------------
-                // INPUT CLICK
-                // ------------------------------------------------
-
-                $(document).on(
+                weekPicker.find(
+                    ".week-picker-prev"
+                ).on(
                     "click",
-                    "#replenishment_week",
                     function(event) {
 
                         event.preventDefault();
                         event.stopPropagation();
 
-                        openPicker();
+                        currentMonth--;
 
-                    }
-                );
+                        if (
+                            currentMonth < 0
+                        ) {
 
-
-                // ------------------------------------------------
-                // PREVENT ORIGINAL DATEPICKER
-                // ------------------------------------------------
-
-                $(document).on(
-                    "focus",
-                    "#replenishment_week",
-                    function() {
-
-                        // Remove Bootstrap datepicker if
-                        // Shiny attached one.
-
-                        const input =
-                            $(this);
-
-                        const datepicker =
-                            input.data(
-                                "datepicker"
-                            );
-
-                        if (datepicker) {
-
-                            try {
-
-                                datepicker.hide();
-
-                            }
-                            catch(e) {}
+                            currentMonth = 11;
+                            currentYear--;
 
                         }
 
+                        drawWeekPicker();
+
                     }
                 );
 
 
-                // ------------------------------------------------
-                // CLOSE WHEN CLICKING OUTSIDE
-                // ------------------------------------------------
+                // ==================================================
+                // NEXT MONTH
+                // ==================================================
 
-                $(document).on(
-                    "mousedown",
+                weekPicker.find(
+                    ".week-picker-next"
+                ).on(
+                    "click",
                     function(event) {
 
-                        if (!picker) {
-                            return;
-                        }
+                        event.preventDefault();
+                        event.stopPropagation();
+
+                        currentMonth++;
 
                         if (
-                            picker.is(":visible") &&
-                            !$(event.target)
-                                .closest(
-                                    "#custom-week-picker"
-                                ).length &&
-                            !$(event.target)
-                                .closest(
-                                    "#replenishment_week"
-                                ).length
+                            currentMonth > 11
                         ) {
 
-                            picker.hide();
+                            currentMonth = 0;
+                            currentYear++;
 
                         }
+
+                        drawWeekPicker();
 
                     }
                 );
 
 
-                // ------------------------------------------------
-                // KEEP POSITION CORRECT
-                // ------------------------------------------------
+                // ==================================================
+                // WEEK CLICK
+                // ==================================================
 
-                $(window).on(
-                    "resize scroll",
-                    function() {
+                weekPicker.find(
+                    ".week-number-button"
+                ).on(
+                    "click",
+                    function(event) {
+
+                        event.preventDefault();
+                        event.stopPropagation();
+
+                        const week =
+                            $(this).data(
+                                "week"
+                            );
+
+
+                        // ------------------------------------------
+                        // WRITE WEEK NUMBER IN THE INPUT
+                        // ------------------------------------------
+
+                        $("#replenishment_week")
+                            .val(
+                                String(week)
+                            );
+
+
+                        // ------------------------------------------
+                        // Send value to Shiny
+                        // ------------------------------------------
 
                         if (
-                            picker &&
-                            picker.is(":visible")
+                            typeof Shiny !==
+                            "undefined"
                         ) {
 
-                            positionPicker();
-
-                        }
-
-                    }
-                );
-
-
-                // ------------------------------------------------
-                // SHINY CAN REBUILD THE INPUT
-                // ------------------------------------------------
-
-                $(document).on(
-                    "shiny:value",
-                    function() {
-
-                        setTimeout(
-                            function() {
-
-                                const input =
-                                    $("#replenishment_week");
-
-                                if (
-                                    input.length
-                                ) {
-
-                                    input.attr(
-                                        "autocomplete",
-                                        "off"
-                                    );
-
+                            Shiny.setInputValue(
+                                "replenishment_week",
+                                String(week),
+                                {
+                                    priority:
+                                        "event"
                                 }
+                            );
 
-                            },
-                            100
-                        );
+                        }
+
+
+                        // ------------------------------------------
+                        // Close picker
+                        // ------------------------------------------
+
+                        weekPicker.hide();
 
                     }
                 );
 
 
-            })();
-            """
-        ),
+                positionWeekPicker();
+
+            }
+
+
+            // ==================================================
+            // OPEN PICKER
+            // ==================================================
+
+            function openWeekPicker() {
+
+                createWeekPicker();
+
+
+                /*
+                 * Always start from the current month when
+                 * opening it for the first time.
+                 */
+
+                if (
+                    currentMonth === null ||
+                    currentYear === null
+                ) {
+
+                    const now =
+                        new Date();
+
+                    currentMonth =
+                        now.getMonth();
+
+                    currentYear =
+                        now.getFullYear();
+
+                }
+
+
+                drawWeekPicker();
+
+                positionWeekPicker();
+
+                weekPicker.show();
+
+            }
+
+
+            // ==================================================
+            // INPUT CLICK
+            // ==================================================
+
+            $(document).on(
+                "click",
+                "#replenishment_week",
+                function(event) {
+
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    openWeekPicker();
+
+                }
+            );
+
+
+            // ==================================================
+            // CLOSE OUTSIDE CLICK
+            // ==================================================
+
+            $(document).on(
+                "mousedown",
+                function(event) {
+
+                    if (!weekPicker) {
+                        return;
+                    }
+
+                    if (
+                        weekPicker.is(":visible") &&
+                        !$(event.target).closest(
+                            "#custom-week-picker"
+                        ).length &&
+                        !$(event.target).closest(
+                            "#replenishment_week"
+                        ).length
+                    ) {
+
+                        weekPicker.hide();
+
+                    }
+
+                }
+            );
+
+
+            // ==================================================
+            // KEEP POSITION
+            // ==================================================
+
+            $(window).on(
+                "resize scroll",
+                function() {
+
+                    if (
+                        weekPicker &&
+                        weekPicker.is(":visible")
+                    ) {
+
+                        positionWeekPicker();
+
+                    }
+
+                }
+            );
+
+
+            // ==================================================
+            // DISABLE AUTOCOMPLETE
+            // ==================================================
+
+            $(document).on(
+                "focus",
+                "#replenishment_week",
+                function() {
+
+                    $(this).attr(
+                        "autocomplete",
+                        "off"
+                    );
+
+                }
+            );
+
+        })();
+
+        """),
 
 
         # ====================================================
-        # CUSTOM WEEK PICKER CSS
+        # ORIGINAL CSS
         # ====================================================
 
-        ui.tags.style(
-            """
+        ui.tags.style("""
+
+        body {
+            background-color: #f4f5f7;
+            font-family: Arial, sans-serif;
+        }
+
+        .main-container {
+            max-width: 1250px;
+            margin: 35px auto;
+            background: white;
+            padding: 35px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        .title {
+            font-size: 30px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-top: 25px;
+            margin-bottom: 15px;
+        }
+
+        .country-selector-container {
+            margin-top: 25px;
+            margin-bottom: 20px;
+        }
+
+        .selectize-control {
+            max-width: 500px;
+        }
+
+        .delivery-table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            margin-top: 25px;
+        }
+
+        .delivery-table {
+            border-collapse: collapse;
+            width: auto;
+            min-width: 800px;
+            table-layout: fixed;
+        }
+
+        .delivery-table th {
+            background-color: #f0f1f3;
+            border: 1px solid #d0d2d5;
+            padding: 8px;
+            text-align: center;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .delivery-table td {
+            border: 1px solid #d0d2d5;
+            padding: 5px;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .delivery-table th:nth-child(1),
+        .delivery-table td:nth-child(1) {
+            width: 150px;
+            min-width: 150px;
+        }
+
+        .delivery-table th:nth-child(2),
+        .delivery-table td:nth-child(2) {
+            width: 55px;
+            min-width: 55px;
+        }
+
+        .delivery-table th:nth-child(3),
+        .delivery-table td:nth-child(3) {
+            width: 85px;
+            min-width: 85px;
+        }
+
+        .delivery-table th:nth-child(n+4),
+        .delivery-table td:nth-child(n+4) {
+            width: 65px;
+            min-width: 65px;
+            max-width: 65px;
+        }
+
+        .month-header {
+            background-color: #fafafa !important;
+            font-size: 13px;
+            color: #555;
+            height: 28px;
+        }
 
-            #custom-week-picker {
+        .blocked-cell {
+            background-color: #eeeeee;
+            color: #555;
+        }
 
-                font-family:
-                    Arial,
-                    Helvetica,
-                    sans-serif;
+        .ord-cell {
+            text-align: right !important;
+        }
 
-            }
+        .total-cell {
+            background-color: #eeeeee;
+            font-weight: 600;
+        }
 
+        .percentage-row td {
+            background-color: #f8f8f8;
+            color: #555;
+            font-size: 13px;
+        }
 
-            .week-picker-header {
+        .send-cell {
+            border: none !important;
+            background-color: white !important;
+            padding-left: 15px !important;
+            width: 80px;
+            min-width: 80px;
+        }
 
-                display: flex;
+        .delivery-table .form-group {
+            margin-bottom: 0;
+        }
 
-                align-items: center;
+        .delivery-table input[type="text"] {
+            width: 55px !important;
+            min-width: 55px !important;
+            max-width: 55px !important;
+            height: 32px !important;
+            padding: 3px !important;
+            text-align: center;
+            box-sizing: border-box;
+        }
 
-                justify-content: space-between;
+        .success-box {
+            margin-top: 25px;
+            padding: 18px;
+            border-radius: 8px;
+            background-color: #eaf7ed;
+            border: 1px solid #b7dfbf;
+            color: #256b35;
+            font-weight: 500;
+        }
 
-                margin-bottom: 10px;
+        .error-box {
+            margin-top: 25px;
+            padding: 18px;
+            border-radius: 8px;
+            background-color: #fff0f0;
+            border: 1px solid #e0b5b5;
+            color: #8a2525;
+        }
 
-            }
 
+        /* =====================================================
+           WEEK PICKER
+           ===================================================== */
 
-            .week-picker-title {
+        #custom-week-picker {
 
-                font-weight: 600;
+            position: absolute;
 
-                font-size: 15px;
+            background: white;
 
-                text-align: center;
+            border: 1px solid #d0d2d5;
 
-                flex: 1;
+            border-radius: 6px;
 
-            }
+            box-shadow:
+                0 4px 15px rgba(0,0,0,0.15);
 
+            width: 220px;
 
-            .week-picker-prev,
-            .week-picker-next {
+            padding: 10px;
 
-                border: none;
+            z-index: 99999;
 
-                background: transparent;
+            font-family:
+                Arial,
+                sans-serif;
 
-                font-size: 25px;
+        }
 
-                line-height: 25px;
 
-                cursor: pointer;
+        .week-picker-header {
 
-                width: 35px;
+            display: flex;
 
-                height: 30px;
+            align-items: center;
 
-                padding: 0;
+            justify-content: space-between;
 
-            }
+            margin-bottom: 8px;
 
+        }
 
-            .week-picker-prev:hover,
-            .week-picker-next:hover {
 
-                background: #f0f0f0;
+        .week-picker-title {
 
-                border-radius: 4px;
+            font-size: 15px;
 
-            }
+            font-weight: 600;
 
+            text-align: center;
 
-            .week-picker-label {
+            flex: 1;
 
-                text-align: center;
+        }
 
-                font-size: 12px;
 
-                font-weight: 600;
+        .week-picker-prev,
+        .week-picker-next {
 
-                color: #777;
+            border: none;
 
-                border-bottom:
-                    1px solid #ddd;
+            background: transparent;
 
-                padding-bottom: 6px;
+            cursor: pointer;
 
-                margin-bottom: 6px;
+            font-size: 25px;
 
-            }
+            width: 30px;
 
+            height: 30px;
 
-            .week-picker-weeks {
+            line-height: 25px;
 
-                display: flex;
+            border-radius: 4px;
 
-                flex-direction: column;
+        }
 
-                gap: 5px;
 
-            }
+        .week-picker-prev:hover,
+        .week-picker-next:hover {
 
+            background-color: #f0f1f3;
 
-            .week-number-button {
+        }
 
-                width: 100%;
 
-                height: 34px;
+        .week-picker-label {
 
-                border: 1px solid #ddd;
+            text-align: center;
 
-                border-radius: 4px;
+            font-size: 12px;
 
-                background: #fff;
+            font-weight: 600;
 
-                font-size: 14px;
+            color: #666;
 
-                cursor: pointer;
+            border-bottom:
+                1px solid #ddd;
 
-            }
+            padding-bottom: 6px;
 
+            margin-bottom: 6px;
 
-            .week-number-button:hover {
+        }
 
-                background: #f0f0f0;
 
-                border-color: #999;
+        .week-picker-weeks {
 
-            }
+            display: flex;
 
+            flex-direction: column;
 
-            #replenishment_week {
+            gap: 4px;
 
-                text-align: center;
+        }
 
-                cursor: pointer;
 
-                background-color: #fff;
+        .week-number-button {
 
-            }
+            width: 100%;
 
-            """
-        ),
+            height: 32px;
 
+            border:
+                1px solid #d0d2d5;
 
-        # ====================================================
-        # GENERAL CSS
-        # ====================================================
+            border-radius: 4px;
 
-        ui.tags.style(
-            """
+            background: white;
 
-            .datepicker {
+            cursor: pointer;
 
-                z-index: 9999 !important;
+            font-size: 14px;
 
-            }
+        }
 
 
-            body {
+        .week-number-button:hover {
 
-                font-family:
-                    Arial,
-                    Helvetica,
-                    sans-serif;
+            background-color: #f0f1f3;
 
-            }
+        }
 
 
-            .main-container {
+        #replenishment_week {
 
-                max-width: 1200px;
+            width: 55px !important;
 
-                margin: 0 auto;
+            min-width: 55px !important;
 
-                padding: 30px;
+            max-width: 55px !important;
 
-            }
+            height: 32px !important;
 
+            padding: 3px !important;
 
-            .app-title {
+            text-align: center;
 
-                font-size: 28px;
+            box-sizing: border-box;
 
-                font-weight: 600;
+            cursor: pointer;
 
-                margin-bottom: 5px;
+        }
 
-            }
 
+        .replenishment-label {
 
-            .app-subtitle {
+            font-size: 12px;
 
-                color: #666;
+            color: #555;
 
-                margin-bottom: 25px;
+            margin-right: 5px;
 
-            }
+        }
 
-
-            .delivery-table {
-
-                margin-top: 25px;
-
-                overflow-x: auto;
-
-            }
-
-
-            .delivery-table table {
-
-                border-collapse: collapse;
-
-                width: 100%;
-
-            }
-
-
-            .delivery-table th,
-            .delivery-table td {
-
-                border:
-                    1px solid #ddd;
-
-                padding: 6px;
-
-                text-align: center;
-
-            }
-
-
-            .delivery-table th {
-
-                background-color: #f5f5f5;
-
-                font-weight: 600;
-
-            }
-
-
-            .delivery-table input {
-
-                text-align: center;
-
-            }
-
-
-            .month-row {
-
-                background-color: #f8f8f8;
-
-                font-weight: 600;
-
-            }
-
-
-            .total-row {
-
-                font-weight: 600;
-
-                background-color: #f5f5f5;
-
-            }
-
-
-            .percent-row {
-
-                font-size: 12px;
-
-                color: #666;
-
-            }
-
-
-            .status-success {
-
-                margin-top: 15px;
-
-                padding: 10px;
-
-                border-radius: 4px;
-
-                background-color: #e8f5e9;
-
-                color: #2e7d32;
-
-            }
-
-
-            .status-error {
-
-                margin-top: 15px;
-
-                padding: 10px;
-
-                border-radius: 4px;
-
-                background-color: #ffebee;
-
-                color: #c62828;
-
-            }
-
-            """
-        )
-
+        """)
     ),
 
 
-    # ========================================================
-    # MAIN PAGE
-    # ========================================================
-
     ui.div(
 
-        {"class": "main-container"},
+        {
+            "class":
+                "main-container"
+        },
 
         ui.div(
-            {"class": "app-title"},
+            {
+                "class":
+                    "title"
+            },
+
             APP_TITLE
         ),
 
         ui.div(
             {
                 "class":
-                    "app-subtitle"
+                    "subtitle"
             },
-            "Please enter the delivery information."
+
+            "Select a destination and enter the "
+            "delivery quantities for each week."
         ),
 
         ui.input_action_button(
@@ -1341,33 +1462,62 @@ def server(
 ):
 
     # ========================================================
-    # REACTIVE VALUES
+    # STATE
     # ========================================================
 
-    input_enabled = reactive.Value(False)
+    input_enabled = reactive.Value(
+        False
+    )
 
-    current_country = reactive.Value(None)
+    current_country = reactive.Value(
+        None
+    )
 
-    status_message = reactive.Value("")
+    status_message = reactive.Value(
+        None
+    )
 
-    status_type = reactive.Value("")
+    status_type = reactive.Value(
+        None
+    )
 
 
     # ========================================================
-    # START BUTTON
+    # START INPUT
     # ========================================================
 
     @reactive.effect
-    @reactive.event(input.start_input)
-    def _():
+    @reactive.event(
+        input.start_input
+    )
+    def start_information():
 
-        input_enabled.set(True)
+        input_enabled.set(
+            True
+        )
 
-        current_country.set(None)
+        current_country.set(
+            None
+        )
 
-        status_message.set("")
+        status_type.set(
+            None
+        )
 
-        status_type.set("")
+        status_message.set(
+            None
+        )
+
+        try:
+
+            ui.update_selectize(
+                "destination",
+                selected=""
+            )
+
+        except Exception:
+
+            pass
 
 
     # ========================================================
@@ -1378,36 +1528,63 @@ def server(
     @render.ui
     def country_selector():
 
-        if not input_enabled.get():
+        if not input_enabled():
 
-            return ui.div()
+            return ui.HTML(
+                ""
+            )
+
+        choices = {
+            "":
+                ""
+        }
+
+        choices.update(
+            {
+                destination:
+                    destination
+                for destination in destinations
+            }
+        )
 
         return ui.div(
 
             {
-                "style":
-                    "margin-top:20px;"
+                "class":
+                    "country-selector-container"
             },
 
-            ui.input_selectize(
-                "destination",
-                "Country",
-                choices={
-                    "": ""
-                }
-                | {
-                    x: x
-                    for x in destinations
+            ui.div(
+                {
+                    "class":
+                        "section-title"
                 },
+
+                "Destination"
+            ),
+
+            ui.input_selectize(
+
+                "destination",
+
+                "Country",
+
+                choices=choices,
+
                 selected="",
+
                 multiple=False,
+
                 options={
+
                     "placeholder":
                         "Search for a country...",
+
                     "allowEmptyOption":
                         True
-                },
-                width="300px"
+
+                }
+
             )
 
         )
@@ -1418,37 +1595,75 @@ def server(
     # ========================================================
 
     @reactive.effect
-    def _country_change():
+    @reactive.event(
+        input.destination
+    )
+    def destination_changed():
 
-        country = input.destination()
+        destination = (
+            input.destination()
+        )
 
-        if (
-            country
-            and country != ""
-        ):
-
-            current_country.set(
-                country
-            )
-
-        else:
+        if not destination:
 
             current_country.set(
                 None
             )
+
+            return
+
+        selected = country_df[
+            country_df[
+                "DESTINATION_NAME"
+            ]
+            == destination
+        ]
+
+        if selected.empty:
+
+            current_country.set(
+                None
+            )
+
+            return
+
+        country = (
+            selected
+            .iloc[0]
+            .to_dict()
+        )
+
+        current_country.set(
+            country
+        )
+
+        status_message.set(
+            None
+        )
+
+        status_type.set(
+            None
+        )
 
 
     # ========================================================
     # QUANTITY INPUT
     # ========================================================
 
-    def create_quantity_input(week):
+    def create_quantity_input(
+        week
+    ):
 
         return ui.input_text(
+
             f"week_{week}",
+
             None,
+
             value="",
+
             placeholder=""
+
         )
 
 
@@ -1458,25 +1673,16 @@ def server(
 
     def create_replenishment_week_input():
 
-        # This remains an input_text rather than input_date.
-        #
-        # The JavaScript above provides the custom calendar.
-        #
-        # The value shown to the user is simply:
-        #
-        #       1
-        #       2
-        #       3
-        #       4
-        #
-        # etc.
-
         return ui.input_text(
+
             "replenishment_week",
+
             None,
+
             value="",
-            placeholder="Week",
-            width="70px"
+
+            placeholder=""
+
         )
 
 
@@ -1488,35 +1694,43 @@ def server(
     @render.ui
     def delivery_table():
 
-        country = current_country.get()
+        country = current_country()
 
-        if not country:
+        if country is None:
 
-            return ui.div()
+            return ui.HTML(
+                ""
+            )
 
-        row = country_df[
-            country_df["DESTINATION_NAME"]
-            == country
-        ]
+        destination = str(
+            country[
+                "DESTINATION_NAME"
+            ]
+        )
 
-        if row.empty:
+        dst = str(
+            country[
+                "DST"
+            ]
+        )
 
-            return ui.div()
+        ord_display = format_ord(
+            country[
+                "ord"
+            ]
+        )
 
-        row = row.iloc[0]
+        min_week = int(
+            country[
+                "min_week"
+            ]
+        )
 
-        min_week = row["min_week"]
-        max_week = row["max_week"]
-
-        try:
-            min_week = int(min_week)
-        except Exception:
-            min_week = 1
-
-        try:
-            max_week = int(max_week)
-        except Exception:
-            max_week = 52
+        max_week = int(
+            country[
+                "max_week"
+            ]
+        )
 
         weeks = list(
             range(
@@ -1525,111 +1739,260 @@ def server(
             )
         )
 
+        months = [
+
+            get_month_for_week(
+                week,
+                country
+            )
+
+            for week in weeks
+
+        ]
+
 
         # ====================================================
-        # MONTH ROW
+        # MONTH HEADER
         # ====================================================
 
         month_cells = []
 
         previous_month = None
 
-        for week in weeks:
+        for month in months:
 
-            month = get_month_for_week(
-                week,
-                country
-            )
-
-            if month != previous_month:
+            if month == previous_month:
 
                 month_cells.append(
-                    ui.tags.td(
-                        month,
-                        colspan=1,
-                        class_="month-row"
-                    )
+                    ""
                 )
-
-                previous_month = month
 
             else:
 
                 month_cells.append(
-                    ui.tags.td(
-                        "",
-                        class_="month-row"
-                    )
+                    month
                 )
+
+            previous_month = month
 
 
         # ====================================================
         # WEEK HEADER
         # ====================================================
 
-        week_headers = []
+        header_cells = [
+
+            ui.tags.th(
+                "DESTINATION"
+            ),
+
+            ui.tags.th(
+                "DST"
+            ),
+
+            ui.tags.th(
+                "ord"
+            )
+
+        ]
 
         for week in weeks:
 
-            week_headers.append(
+            header_cells.append(
+
                 ui.tags.th(
                     f"W{week}"
                 )
+
             )
 
+        header_cells.append(
+
+            ui.tags.th(
+                "Total"
+            )
+
+        )
+
+        header_cells.append(
+
+            ui.tags.th(
+                ""
+            )
+
+        )
+
 
         # ====================================================
-        # QUANTITY CELLS
+        # MONTH ROW
         # ====================================================
 
-        quantity_cells = []
+        month_row = [
+
+            ui.tags.th(
+                "",
+                {
+                    "class":
+                        "month-header"
+                }
+            ),
+
+            ui.tags.th(
+                "",
+                {
+                    "class":
+                        "month-header"
+                }
+            ),
+
+            ui.tags.th(
+                "",
+                {
+                    "class":
+                        "month-header"
+                }
+            )
+
+        ]
+
+        for month in month_cells:
+
+            month_row.append(
+
+                ui.tags.th(
+                    month,
+                    {
+                        "class":
+                            "month-header"
+                    }
+                )
+
+            )
+
+        month_row.append(
+
+            ui.tags.th(
+                "",
+                {
+                    "class":
+                        "month-header"
+                }
+            )
+
+        )
+
+        month_row.append(
+
+            ui.tags.th(
+                "",
+                {
+                    "class":
+                        "month-header"
+                }
+            )
+
+        )
+
+
+        # ====================================================
+        # QUANTITY ROW
+        # ====================================================
+
+        quantity_cells = [
+
+            ui.tags.td(
+                destination,
+                {
+                    "class":
+                        "blocked-cell"
+                }
+            ),
+
+            ui.tags.td(
+                dst,
+                {
+                    "class":
+                        "blocked-cell"
+                }
+            ),
+
+            ui.tags.td(
+                ord_display,
+                {
+                    "class":
+                        "blocked-cell ord-cell"
+                }
+            )
+
+        ]
 
         for week in weeks:
 
             quantity_cells.append(
+
                 ui.tags.td(
+
                     create_quantity_input(
                         week
                     )
+
                 )
+
             )
 
 
         # ====================================================
-        # TOTAL ROW
+        # TOTAL
         # ====================================================
 
-        total_cells = []
+        quantity_cells.append(
 
-        for week in weeks:
-
-            total_cells.append(
-                ui.tags.td(
-                    ui.output_text(
-                        f"total_week_{week}"
-                    )
-                )
-            )
-
-
-        # ====================================================
-        # REPLENISHMENT WEEK
-        # ====================================================
-
-        replenishment_cells = [
             ui.tags.td(
-                "Replenishment week"
-            )
-        ]
 
-        replenishment_cells.append(
+                ui.output_text(
+                    "total_quantity"
+                ),
+
+                {
+                    "class":
+                        "total-cell"
+                }
+
+            )
+
+        )
+
+
+        # ====================================================
+        # SEND + REPLENISHMENT WEEK
+        # ====================================================
+
+        quantity_cells.append(
+
             ui.tags.td(
+
+                ui.span(
+                    "Week",
+                    {
+                        "class":
+                            "replenishment-label"
+                    }
+                ),
+
                 create_replenishment_week_input(),
-                colspan=max(
-                    1,
-                    len(weeks) - 1
-                )
+
+                ui.input_action_button(
+                    "send",
+                    "Send"
+                ),
+
+                {
+                    "class":
+                        "send-cell"
+                }
+
             )
+
         )
 
 
@@ -1637,36 +2000,83 @@ def server(
         # PERCENTAGE ROW
         # ====================================================
 
-        percent_cells = []
+        percentage_cells = [
+
+            ui.tags.td(
+                ""
+            ),
+
+            ui.tags.td(
+                ""
+            ),
+
+            ui.tags.td(
+                ""
+            )
+
+        ]
 
         for week in weeks:
 
-            percent_cells.append(
+            percentage_cells.append(
+
                 ui.tags.td(
+
                     ui.output_text(
-                        f"percent_week_{week}"
+                        f"percent_{week}"
                     )
+
                 )
+
             )
 
+        percentage_cells.append(
+
+            ui.tags.td(
+                "100%"
+            )
+
+        )
+
+        percentage_cells.append(
+
+            ui.tags.td(
+                "",
+                {
+                    "class":
+                        "send-cell"
+                }
+            )
+
+        )
+
+
+        # ====================================================
+        # TABLE
+        # ====================================================
 
         return ui.div(
 
             {
                 "class":
-                    "delivery-table"
+                    "delivery-table-wrapper"
             },
 
             ui.tags.table(
 
+                {
+                    "class":
+                    "delivery-table"
+                },
+
                 ui.tags.thead(
 
                     ui.tags.tr(
-                        *month_cells
+                        month_row
                     ),
 
                     ui.tags.tr(
-                        *week_headers
+                        header_cells
                     )
 
                 ),
@@ -1674,36 +2084,18 @@ def server(
                 ui.tags.tbody(
 
                     ui.tags.tr(
-                        *quantity_cells
+                        quantity_cells
                     ),
 
                     ui.tags.tr(
-                        *total_cells,
-                        class_="total-row"
-                    ),
+                        {
+                            "class":
+                                "percentage-row"
+                        },
 
-                    ui.tags.tr(
-                        *replenishment_cells
-                    ),
-
-                    ui.tags.tr(
-                        *percent_cells,
-                        class_="percent-row"
+                        percentage_cells
                     )
 
-                )
-
-            ),
-
-            ui.div(
-                {
-                    "style":
-                        "margin-top:20px;"
-                },
-
-                ui.input_action_button(
-                    "send",
-                    "Send"
                 )
 
             )
@@ -1717,268 +2109,347 @@ def server(
 
     @output
     @render.text
-    def total():
+    def total_quantity():
 
-        country = current_country.get()
+        country = current_country()
 
-        if not country:
+        if country is None:
+
             return ""
 
-        row = country_df[
-            country_df["DESTINATION_NAME"]
-            == country
-        ]
+        min_week = int(
+            country[
+                "min_week"
+            ]
+        )
 
-        if row.empty:
-            return ""
+        max_week = int(
+            country[
+                "max_week"
+            ]
+        )
 
-        ord_value = row.iloc[0]["ord"]
+        total = 0
 
-        return format_ord(
-            ord_value
+        for week in range(
+            min_week,
+            max_week + 1
+        ):
+
+            value = getattr(
+                input,
+                f"week_{week}"
+            )()
+
+            if not value:
+
+                continue
+
+            try:
+
+                total += float(
+                    value
+                )
+
+            except Exception:
+
+                continue
+
+
+        if total == int(
+            total
+        ):
+
+            return str(
+                int(total)
+            )
+
+        return str(
+            round(
+                total,
+                2
+            )
         )
 
 
     # ========================================================
-    # WEEK TOTAL OUTPUTS
+    # PERCENTAGES
     # ========================================================
 
-    for week in range(1, 54):
+    def make_percentage_renderer(
+        week
+    ):
 
-        def make_total_output(w):
+        @output(
+            id=f"percent_{week}"
+        )
+        @render.text
+        def percentage():
 
-            @output(id=f"total_week_{w}")
-            @render.text
-            def total_week():
+            country = current_country()
 
-                value = input[
-                    f"week_{w}"
-                ]()
+            if country is None:
 
-                if (
-                    value is None
-                    or value == ""
-                ):
-                    return ""
+                return ""
 
-                try:
-                    return str(
-                        int(
-                            float(value)
-                        )
-                    )
-
-                except Exception:
-                    return ""
-
-            return total_week
-
-
-        make_total_output(week)
-
-
-    # ========================================================
-    # PERCENTAGE OUTPUTS
-    # ========================================================
-
-    for week in range(1, 54):
-
-        def make_percent_output(w):
-
-            @output(id=f"percent_week_{w}")
-            @render.text
-            def percent_week():
-
-                country = (
-                    current_country.get()
-                )
-
-                if not country:
-                    return ""
-
-                row = country_df[
-                    country_df[
-                        "DESTINATION_NAME"
-                    ] == country
+            min_week = int(
+                country[
+                    "min_week"
                 ]
+            )
 
-                if row.empty:
-                    return ""
+            max_week = int(
+                country[
+                    "max_week"
+                ]
+            )
 
-                ord_value = float(
-                    row.iloc[0]["ord"]
-                )
+            total = 0
 
-                if ord_value == 0:
-                    return ""
-
-                value = input[
-                    f"week_{w}"
-                ]()
-
-                if (
-                    value is None
-                    or value == ""
-                ):
-                    return ""
-
-                try:
-
-                    qty = float(value)
-
-                    pct = (
-                        qty
-                        / ord_value
-                        * 100
-                    )
-
-                    return f"{pct:.1f}%"
-
-                except Exception:
-
-                    return ""
-
-            return percent_week
-
-
-        make_percent_output(week)
-
-
-    # ========================================================
-    # WEEK LIMITERS
-    # ========================================================
-
-    @reactive.effect
-    def _limit_week_inputs():
-
-        country = current_country.get()
-
-        if not country:
-            return
-
-        row = country_df[
-            country_df[
-                "DESTINATION_NAME"
-            ] == country
-        ]
-
-        if row.empty:
-            return
-
-        ord_value = float(
-            row.iloc[0]["ord"]
-        )
-
-        for week in range(1, 54):
-
-            try:
-
-                current_value = input[
-                    f"week_{week}"
-                ]()
-
-            except Exception:
-
-                continue
-
-            if (
-                current_value is None
-                or current_value == ""
+            for w in range(
+                min_week,
+                max_week + 1
             ):
-                continue
 
-            try:
+                value = getattr(
+                    input,
+                    f"week_{w}"
+                )()
 
-                current_qty = int(
-                    float(current_value)
-                )
+                if not value:
 
-            except Exception:
-
-                continue
-
-            other_total = 0
-
-            for other_week in range(1, 54):
-
-                if (
-                    other_week
-                    == week
-                ):
                     continue
 
                 try:
 
-                    other_value = input[
-                        f"week_{other_week}"
-                    ]()
-
-                    if (
-                        other_value is not None
-                        and other_value != ""
-                    ):
-
-                        other_total += int(
-                            float(
-                                other_value
-                            )
-                        )
+                    total += float(
+                        value
+                    )
 
                 except Exception:
 
-                    pass
+                    continue
 
-            remaining = max(
-                0,
-                int(ord_value)
+
+            value = getattr(
+                input,
+                f"week_{week}"
+            )()
+
+            if (
+                not value
+                or total == 0
+            ):
+
+                return "0%"
+
+            try:
+
+                result = (
+                    float(value)
+                    / total
+                    * 100
+                )
+
+                return (
+                    f"{result:.0f}%"
+                )
+
+            except Exception:
+
+                return "0%"
+
+
+        return percentage
+
+
+    # ========================================================
+    # REGISTER WEEK OUTPUTS
+    # ========================================================
+
+    for week in range(
+        1,
+        54
+    ):
+
+        make_percentage_renderer(
+            week
+        )
+
+
+    # ========================================================
+    # AUTOMATIC ORD LIMIT
+    # ========================================================
+
+    def make_week_limiter(
+        week
+    ):
+
+        @reactive.effect
+        @reactive.event(
+            lambda:
+                getattr(
+                    input,
+                    f"week_{week}"
+                )()
+        )
+        def limit_week():
+
+            country = current_country()
+
+            if country is None:
+
+                return
+
+
+            # ------------------------------------------------
+            # ORD
+            # ------------------------------------------------
+
+            ord_value = country.get(
+                "ord"
+            )
+
+            if pd.isna(
+                ord_value
+            ):
+
+                return
+
+            try:
+
+                ord_value = int(
+                    float(
+                        ord_value
+                    )
+                )
+
+            except Exception:
+
+                return
+
+
+            # ------------------------------------------------
+            # CURRENT VALUE
+            # ------------------------------------------------
+
+            current_value = getattr(
+                input,
+                f"week_{week}"
+            )()
+
+            if not current_value:
+
+                return
+
+            current_value = str(
+                current_value
+            ).strip()
+
+
+            # ------------------------------------------------
+            # Only process whole numbers
+            # ------------------------------------------------
+
+            if not current_value.isdigit():
+
+                return
+
+            current_value = int(
+                current_value
+            )
+
+
+            # ------------------------------------------------
+            # Calculate OTHER weeks
+            # ------------------------------------------------
+
+            other_total = 0
+
+            min_week = int(
+                country[
+                    "min_week"
+                ]
+            )
+
+            max_week = int(
+                country[
+                    "max_week"
+                ]
+            )
+
+            for other_week in range(
+                min_week,
+                max_week + 1
+            ):
+
+                if other_week == week:
+
+                    continue
+
+                other_value = getattr(
+                    input,
+                    f"week_{other_week}"
+                )()
+
+                if not other_value:
+
+                    continue
+
+                other_value = str(
+                    other_value
+                ).strip()
+
+                if other_value.isdigit():
+
+                    other_total += int(
+                        other_value
+                    )
+
+
+            # ------------------------------------------------
+            # Remaining quantity
+            # ------------------------------------------------
+
+            remaining = (
+                ord_value
                 - other_total
             )
 
-            if current_qty > remaining:
+            remaining = max(
+                0,
+                remaining
+            )
+
+
+            # ------------------------------------------------
+            # Cap current value
+            # ------------------------------------------------
+
+            if current_value > remaining:
 
                 ui.update_text(
                     f"week_{week}",
                     value=str(
                         remaining
-                    ),
-                    session=session
+                    )
                 )
 
 
-    # ========================================================
-    # STATUS
-    # ========================================================
+        return limit_week
 
-    @output
-    @render.ui
-    def status():
 
-        message = (
-            status_message.get()
-        )
+    # --------------------------------------------------------
+    # REGISTER LIMITERS
+    # --------------------------------------------------------
 
-        if not message:
-            return ui.div()
+    for week in range(
+        1,
+        54
+    ):
 
-        if (
-            status_type.get()
-            == "success"
-        ):
-
-            return ui.div(
-                {
-                    "class":
-                        "status-success"
-                },
-                message
-            )
-
-        return ui.div(
-            {
-                "class":
-                    "status-error"
-            },
-            message
+        make_week_limiter(
+            week
         )
 
 
@@ -1987,55 +2458,24 @@ def server(
     # ========================================================
 
     @reactive.effect
-    @reactive.event(input.send)
-    def _send():
+    @reactive.event(
+        input.send
+    )
+    async def process_submission():
 
-        country = (
-            current_country.get()
-        )
+        country = current_country()
 
-        if not country:
-
-            status_message.set(
-                "Please select a country."
-            )
+        if country is None:
 
             status_type.set(
                 "error"
             )
 
-            return
-
-
-        # ====================================================
-        # COUNTRY ROW
-        # ====================================================
-
-        row = country_df[
-            country_df[
-                "DESTINATION_NAME"
-            ] == country
-        ]
-
-        if row.empty:
-
             status_message.set(
-                "Country information could not be found."
-            )
-
-            status_type.set(
-                "error"
+                "Please select a destination first."
             )
 
             return
-
-        row = row.iloc[0]
-
-        dst = row["DST"]
-
-        ord_value = float(
-            row["ord"]
-        )
 
 
         # ====================================================
@@ -2047,178 +2487,248 @@ def server(
         )
 
         if (
-            replenishment_week
-            is None
-            or str(
+            not replenishment_week
+            or not str(
                 replenishment_week
-            ).strip() == ""
+            ).isdigit()
         ):
+
+            status_type.set(
+                "error"
+            )
 
             status_message.set(
                 "Please select a replenishment week."
             )
 
-            status_type.set(
-                "error"
-            )
-
             return
 
-
-        try:
-
-            replenishment_week = int(
-                str(
-                    replenishment_week
-                ).strip()
-            )
-
-        except Exception:
-
-            status_message.set(
-                "Please select a valid replenishment week."
-            )
-
-            status_type.set(
-                "error"
-            )
-
-            return
+        replenishment_week = int(
+            replenishment_week
+        )
 
 
         # ====================================================
-        # COLLECT WEEK QUANTITIES
+        # ORD
         # ====================================================
 
-        values = []
+        ord_value = country.get(
+            "ord"
+        )
 
-        total_qty = 0
+        if pd.isna(
+            ord_value
+        ):
 
-        for week in range(1, 54):
+            ord_value = None
 
-            try:
+        else:
 
-                value = input[
-                    f"week_{week}"
-                ]()
-
-            except Exception:
-
-                continue
-
-            if (
-                value is None
-                or str(value).strip() == ""
-            ):
-                continue
-
-            value = str(value).strip()
-
-            if not re.fullmatch(
-                r"\d+",
-                value
-            ):
-
-                status_message.set(
-                    f"Week {week} must contain a whole number."
+            ord_value = int(
+                float(
+                    ord_value
                 )
+            )
+
+
+        # ====================================================
+        # WEEKS
+        # ====================================================
+
+        min_week = int(
+            country[
+                "min_week"
+            ]
+        )
+
+        max_week = int(
+            country[
+                "max_week"
+            ]
+        )
+
+        rows = []
+
+        total = 0
+
+
+        for week in range(
+            min_week,
+            max_week + 1
+        ):
+
+            value = getattr(
+                input,
+                f"week_{week}"
+            )()
+
+            if not value:
+
+                value = "0"
+
+            value = str(
+                value
+            ).strip()
+
+
+            if not value.isdigit():
 
                 status_type.set(
                     "error"
                 )
 
+                status_message.set(
+                    f"W{week} must contain "
+                    "a whole number."
+                )
+
                 return
 
-            qty = int(value)
 
-            if qty <= 0:
-                continue
-
-            values.append(
-                (
-                    week,
-                    qty
-                )
+            numeric_value = int(
+                value
             )
 
-            total_qty += qty
+            total += numeric_value
+
+            rows.append(
+
+                {
+                    "week":
+                        week,
+
+                    "qty":
+                        numeric_value
+                }
+
+            )
 
 
         # ====================================================
-        # VALIDATION
+        # FINAL ORD CHECK
         # ====================================================
 
-        if total_qty <= 0:
-
-            status_message.set(
-                "Please enter at least one delivery quantity."
-            )
+        if (
+            ord_value is not None
+            and total > ord_value
+        ):
 
             status_type.set(
                 "error"
             )
 
-            return
-
-
-        if total_qty > ord_value:
-
             status_message.set(
-                "The total delivery quantity cannot exceed the ORD."
-            )
-
-            status_type.set(
-                "error"
+                "The total quantity cannot "
+                f"exceed the ORD value of "
+                f"{ord_value:,}."
             )
 
             return
 
 
         # ====================================================
-        # PERCENTAGES
+        # REQUIRE QUANTITY
+        # ====================================================
+
+        if total <= 0:
+
+            status_type.set(
+                "error"
+            )
+
+            status_message.set(
+                "Please enter at least one quantity."
+            )
+
+            return
+
+
+        # ====================================================
+        # BUILD OUTPUT
         # ====================================================
 
         output_rows = []
 
-        for week, qty in values:
 
-            percent = (
+        for row in rows:
+
+            week = row[
+                "week"
+            ]
+
+            qty = row[
+                "qty"
+            ]
+
+            if qty == 0:
+
+                continue
+
+
+            percentage = (
                 qty
-                / total_qty
+                / total
                 * 100
             )
 
-            output_rows.append({
 
-                "DST":
-                    dst,
+            output_rows.append(
 
-                "DESTINATION":
-                    country,
+                {
 
-                "WEEK":
-                    week,
+                    "DST":
+                        str(
+                            country[
+                                "DST"
+                            ]
+                        ),
 
-                "qty":
-                    qty,
+                    "DESTINATION":
+                        str(
+                            country[
+                                "DESTINATION_NAME"
+                            ]
+                        ),
 
-                "percent":
-                    percent
+                    "WEEK":
+                        int(
+                            week
+                        ),
 
-            })
+                    "qty":
+                        int(
+                            qty
+                        ),
+
+                    "percent":
+                        f"{percentage:.0f}%"
+
+                }
+
+            )
+
+
+        submission_df = pd.DataFrame(
+
+            output_rows,
+
+            columns=[
+                "DST",
+                "DESTINATION",
+                "WEEK",
+                "qty",
+                "percent"
+            ]
+
+        )
 
 
         # ====================================================
-        # R VECTOR
+        # CREATE R VECTOR
         # ====================================================
-
-        r_values = [
-            row["qty"]
-            for row in output_rows
-        ]
 
         r_vector = create_r_vector(
-            r_values
+            submission_df
         )
 
 
@@ -2227,80 +2737,51 @@ def server(
         # ====================================================
 
         subject = (
-            f"Delivery Information - "
-            f"{country}"
+            "Delivery information - "
+            f"{country['DESTINATION_NAME']}"
         )
 
 
-        body_lines = [
-
-            f"Destination: {country}",
-
-            f"DST: {dst}",
-
-            f"ORD: {format_ord(ord_value)}",
-
-            (
-                "Replenishment week: "
-                f"{replenishment_week}"
-            ),
-
-            "",
-
-            "Delivery quantities:"
-
-        ]
-
-
-        for row in output_rows:
-
-            body_lines.append(
-
-                f"Week {row['WEEK']}: "
-                f"{row['qty']} "
-                f"({row['percent']:.1f}%)"
-
-            )
-
-
-        body_lines.extend([
-
-            "",
-
-            "R vector:",
-
-            r_vector
-
-        ])
-
-
-        body = "\n".join(
-            body_lines
+        body = (
+            "Please see below the delivery information\n"
+            "\n"
+            f"Replenishment week: "
+            f"{replenishment_week}\n"
+            "\n"
+            f"{r_vector}\n"
         )
 
 
         # ====================================================
-        # OUTLOOK URL
+        # MICROSOFT 365 OUTLOOK URL
         # ====================================================
-
-        recipients = (
-            f"{OWNER_EMAIL};"
-            f"{SECOND_OWNER_EMAIL}"
-        )
 
         outlook_url = (
             "https://outlook.office.com/mail/deeplink/compose?"
-            f"to={quote(recipients)}"
-            f"&subject={quote(subject)}"
-            f"&body={quote(body)}"
+            "to="
+            + quote(
+                OWNER_EMAIL
+            )
+            + ","
+            + quote(
+                SECOND_OWNER_EMAIL
+            )
+            + "&subject="
+            + quote(
+                subject
+            )
+            + "&body="
+            + quote(
+                body
+            )
         )
 
 
         # ====================================================
-        # OPEN OUTLOOK
+        # SEND URL TO THE USER'S BROWSER
         # ====================================================
 
-        session.send_custom_message(
+        await session.send_custom_message(
             "open_outlook",
             {
                 "url":
@@ -2309,20 +2790,84 @@ def server(
         )
 
 
-        status_message.set(
-            "The Outlook email window has been opened."
-        )
+        # ====================================================
+        # SUCCESS
+        # ====================================================
 
         status_type.set(
             "success"
         )
 
+        status_message.set(
+
+            f"""
+            Your email has been prepared successfully.<br><br>
+
+            Please review the information in Outlook
+            and press <b>Send</b> to submit it.<br><br>
+
+            Replenishment week:
+            <b>{replenishment_week}</b><br><br>
+
+            After sending the email, you can press
+            <b>Input information</b> to enter data
+            for another country.
+            """
+
+        )
+
+
+    # ========================================================
+    # STATUS
+    # ========================================================
+
+    @output
+    @render.ui
+    def status():
+
+        message = status_message()
+
+        if not message:
+
+            return ui.HTML(
+                ""
+            )
+
+        if status_type() == "success":
+
+            return ui.div(
+
+                {
+                    "class":
+                        "success-box"
+                },
+
+                ui.HTML(
+                    message
+                )
+
+            )
+
+        return ui.div(
+
+            {
+                "class":
+                    "error-box"
+            },
+
+            ui.HTML(
+                message
+            )
+
+        )
+
 
 # ============================================================
-# APP
+# CREATE APP
 # ============================================================
 
 app = App(
     app_ui,
     server
 )
+```
