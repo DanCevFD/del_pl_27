@@ -2446,7 +2446,9 @@ def server(
             total = 0
 
             # ------------------------------------------------
-            # Calculate the total using RAW week IDs
+            # IMPORTANT:
+            # These are RAW weeks because they correspond
+            # directly to the actual Shiny input IDs.
             # ------------------------------------------------
 
             for w in range(
@@ -2481,7 +2483,7 @@ def server(
 
 
             # ------------------------------------------------
-            # Get the current week's RAW value
+            # Current RAW week
             # ------------------------------------------------
 
             try:
@@ -2496,10 +2498,6 @@ def server(
                 value = ""
 
 
-            # ------------------------------------------------
-            # Empty week / zero total
-            # ------------------------------------------------
-
             if (
                 not value
                 or total == 0
@@ -2507,10 +2505,6 @@ def server(
 
                 return "0%"
 
-
-            # ------------------------------------------------
-            # Calculate percentage
-            # ------------------------------------------------
 
             try:
 
@@ -2535,34 +2529,51 @@ def server(
     # --------------------------------------------------------
     # IMPORTANT:
     #
-    # The table uses RAW week numbers for its IDs.
+    # The table uses RAW week numbers for the input/output IDs.
     #
-    # Therefore we must create percentage renderers for
-    # raw values such as:
+    # Therefore we must register a percentage renderer for
+    # every raw week that can actually occur in country_df.
     #
-    # 0
-    # 1
-    # 2
-    # ...
-    # 52
-    # 53
-    # 54
+    # Example:
     #
-    # rather than only 1..53.
+    # min_week = 50
+    # max_week = 54
     #
-    # This prevents the percentage cell from showing the
-    # permanent loading spinner.
+    # The visible headers are:
+    #
+    # W50 W51 W52 W1 W2
+    #
+    # but the actual IDs are:
+    #
+    # scenario_week_50
+    # scenario_week_51
+    # scenario_week_52
+    # scenario_week_53
+    # scenario_week_54
+    #
+    # The previous renderer registration only went from
+    # 1 to 53, so scenario_percent_54 did not exist and
+    # Shiny kept showing the loading indicator.
     # --------------------------------------------------------
+
+    all_raw_weeks = sorted(
+        {
+            week
+            for _, country_row in country_df.iterrows()
+            for week in range(
+                int(country_row["min_week"]),
+                int(country_row["max_week"]) + 1
+            )
+        }
+    )
+
 
     for scenario in [
         "ideal",
         "acceptable"
     ]:
 
-        for week in range(
-            -10,
-            71
-        ):
+        for week in all_raw_weeks:
 
             make_percentage_renderer(
                 scenario,
