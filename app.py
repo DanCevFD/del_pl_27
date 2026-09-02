@@ -2445,13 +2445,10 @@ def server(
 
             total = 0
 
-            # ------------------------------------------------
-            # IMPORTANT:
-            # These are RAW weeks because they correspond
-            # directly to the actual Shiny input IDs.
-            # ------------------------------------------------
+            # Use RAW week numbers because these are the
+            # actual Shiny input IDs.
 
-            for w in range(
+            for raw_week in range(
                 min_week,
                 max_week + 1
             ):
@@ -2460,7 +2457,7 @@ def server(
 
                     value = getattr(
                         input,
-                        f"{scenario}_week_{w}"
+                        f"{scenario}_week_{raw_week}"
                     )()
 
                 except Exception:
@@ -2482,9 +2479,7 @@ def server(
                     continue
 
 
-            # ------------------------------------------------
             # Current RAW week
-            # ------------------------------------------------
 
             try:
 
@@ -2527,33 +2522,12 @@ def server(
 
 
     # --------------------------------------------------------
-    # IMPORTANT:
+    # Register a renderer for every RAW week that can occur
+    # in the CSV.
     #
-    # The table uses RAW week numbers for the input/output IDs.
-    #
-    # Therefore we must register a percentage renderer for
-    # every raw week that can actually occur in country_df.
-    #
-    # Example:
-    #
-    # min_week = 50
-    # max_week = 54
-    #
-    # The visible headers are:
-    #
-    # W50 W51 W52 W1 W2
-    #
-    # but the actual IDs are:
-    #
-    # scenario_week_50
-    # scenario_week_51
-    # scenario_week_52
-    # scenario_week_53
-    # scenario_week_54
-    #
-    # The previous renderer registration only went from
-    # 1 to 53, so scenario_percent_54 did not exist and
-    # Shiny kept showing the loading indicator.
+    # This is important because the visible week can be
+    # normalized (e.g. raw 53 -> W1), but the Shiny input ID
+    # remains scenario_week_53.
     # --------------------------------------------------------
 
     all_raw_weeks = sorted(
@@ -2733,15 +2707,33 @@ def server(
         return limit_week
 
 
+    # --------------------------------------------------------
+    # Register the limiter for every RAW week that can occur
+    # in the CSV.
+    #
+    # This is important because the visible week can be
+    # normalized (e.g. raw 53 -> W1), but the Shiny input ID
+    # remains scenario_week_53.
+    # --------------------------------------------------------
+
+    all_raw_weeks = sorted(
+        {
+            week
+            for _, country_row in country_df.iterrows()
+            for week in range(
+                int(country_row["min_week"]),
+                int(country_row["max_week"]) + 1
+            )
+        }
+    )
+
+
     for scenario in [
         "ideal",
         "acceptable"
     ]:
 
-        for week in range(
-            1,
-            54
-        ):
+        for week in all_raw_weeks:
 
             make_week_limiter(
                 scenario,
