@@ -15,15 +15,9 @@ APP_TITLE = "Delivery Information"
 # ============================================================
 # EMAIL CONFIGURATION
 # ============================================================
-#
-# MAIN EMAIL
-#
+
 OWNER_EMAIL = "Stephan.Gilis@unitedbeetseeds.org"
 
-
-# ------------------------------------------------------------
-# CC EMAIL
-#
 SECOND_OWNER_EMAIL = "Danny.Cevallos@unitedbeetseeds.org"
 
 
@@ -306,20 +300,12 @@ def create_r_vector(
 
     data = submission_df.copy()
 
-    # --------------------------------------------------------
-    # Convert everything to strings
-    # --------------------------------------------------------
-
     for column in columns:
 
         data[column] = (
             data[column]
             .astype(str)
         )
-
-    # --------------------------------------------------------
-    # Calculate column widths
-    # --------------------------------------------------------
 
     widths = {}
 
@@ -334,10 +320,6 @@ def create_r_vector(
         )
 
         widths[column] = maximum
-
-    # --------------------------------------------------------
-    # Header
-    # --------------------------------------------------------
 
     header_parts = []
 
@@ -359,10 +341,6 @@ def create_r_vector(
     lines = [
         header_line
     ]
-
-    # --------------------------------------------------------
-    # Data rows
-    # --------------------------------------------------------
 
     for _, row in data.iterrows():
 
@@ -399,10 +377,6 @@ def create_r_vector(
             )
         )
 
-    # --------------------------------------------------------
-    # Convert to R strings
-    # --------------------------------------------------------
-
     quoted_lines = []
 
     for line in lines:
@@ -422,10 +396,6 @@ def create_r_vector(
         quoted_lines.append(
             f'"{safe_line}"'
         )
-
-    # --------------------------------------------------------
-    # Final c()
-    # --------------------------------------------------------
 
     r_vector = (
         "c(\n"
@@ -449,6 +419,7 @@ app_ui = ui.page_fluid(
         ui.tags.title(
             APP_TITLE
         ),
+
 
         # ====================================================
         # JAVASCRIPT FOR REMOTE OUTLOOK
@@ -730,24 +701,6 @@ app_ui = ui.page_fluid(
                     ).getDate();
 
 
-                /*
-                 * Only Mondays are displayed.
-                 *
-                 * Therefore January 2027 gives:
-                 *
-                 * Week 1
-                 * Week 2
-                 * Week 3
-                 * Week 4
-                 *
-                 * corresponding to:
-                 *
-                 * Jan 4
-                 * Jan 11
-                 * Jan 18
-                 * Jan 25
-                 */
-
                 for (
                     let day = 1;
                     day <= daysInMonth;
@@ -876,19 +829,11 @@ app_ui = ui.page_fluid(
                             );
 
 
-                        // ------------------------------------------
-                        // WRITE WEEK NUMBER IN THE INPUT
-                        // ------------------------------------------
-
                         $("#replenishment_week")
                             .val(
                                 String(week)
                             );
 
-
-                        // ------------------------------------------
-                        // Send value to Shiny
-                        // ------------------------------------------
 
                         if (
                             typeof Shiny !==
@@ -906,10 +851,6 @@ app_ui = ui.page_fluid(
 
                         }
 
-
-                        // ------------------------------------------
-                        // Close picker
-                        // ------------------------------------------
 
                         weekPicker.hide();
 
@@ -930,11 +871,6 @@ app_ui = ui.page_fluid(
 
                 createWeekPicker();
 
-
-                /*
-                 * Always start from the current month when
-                 * opening it for the first time.
-                 */
 
                 if (
                     currentMonth === null ||
@@ -1154,6 +1090,17 @@ app_ui = ui.page_fluid(
             max-width: 65px;
         }
 
+        /* ----------------------------------------------------
+           REPLENISHMENT WEEK COLUMN
+           ---------------------------------------------------- */
+
+        .delivery-table th.replenishment-header,
+        .delivery-table td.replenishment-cell {
+            width: 135px !important;
+            min-width: 135px !important;
+            max-width: 135px !important;
+        }
+
         .month-header {
             background-color: #fafafa !important;
             font-size: 13px;
@@ -1184,9 +1131,6 @@ app_ui = ui.page_fluid(
         .send-cell {
             border: none !important;
             background-color: white !important;
-            padding-left: 15px !important;
-            width: 80px;
-            min-width: 80px;
         }
 
         .delivery-table .form-group {
@@ -1224,21 +1168,44 @@ app_ui = ui.page_fluid(
 
 
         /* =====================================================
-           REPLENISHMENT CONTROLS
+           SEND BUTTON BELOW TABLE
            ===================================================== */
 
-        .delivery-controls {
+        .send-button-container {
             width: 100%;
+            text-align: center;
             margin-top: 12px;
+        }
+
+
+        /* =====================================================
+           REPLENISHMENT WEEK
+           ===================================================== */
+
+        .replenishment-content {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
+            gap: 5px;
         }
 
         .replenishment-label {
             font-size: 12px;
             color: #555;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        #replenishment_week {
+            width: 55px !important;
+            min-width: 55px !important;
+            max-width: 55px !important;
+            height: 32px !important;
+            padding: 3px !important;
+            text-align: center;
+            box-sizing: border-box;
+            cursor: pointer;
+            margin: 0 auto;
         }
 
 
@@ -1382,27 +1349,6 @@ app_ui = ui.page_fluid(
         .week-number-button:hover {
 
             background-color: #f0f1f3;
-
-        }
-
-
-        #replenishment_week {
-
-            width: 55px !important;
-
-            min-width: 55px !important;
-
-            max-width: 55px !important;
-
-            height: 32px !important;
-
-            padding: 3px !important;
-
-            text-align: center;
-
-            box-sizing: border-box;
-
-            cursor: pointer;
 
         }
 
@@ -1821,12 +1767,18 @@ def server(
 
         )
 
-        # Keep the final empty column so the
-        # existing table geometry is unchanged.
+        # ----------------------------------------------------
+        # REPLENISHMENT WEEK COLUMN
+        # ----------------------------------------------------
+
         header_cells.append(
 
             ui.tags.th(
-                ""
+                "Replenishment week",
+                {
+                    "class":
+                        "replenishment-header"
+                }
             )
 
         )
@@ -1896,7 +1848,7 @@ def server(
                 "",
                 {
                     "class":
-                        "month-header"
+                        "month-header replenishment-header"
                 }
             )
 
@@ -1973,20 +1925,32 @@ def server(
 
 
         # ====================================================
-        # FINAL EMPTY CELL
+        # REPLENISHMENT WEEK
         #
-        # The replenishment-week selector and Send button
-        # are intentionally NOT placed here anymore.
+        # This remains a REAL TABLE COLUMN immediately
+        # after Total.
         # ====================================================
 
         quantity_cells.append(
 
             ui.tags.td(
-                "",
+
+                ui.div(
+
+                    {
+                        "class":
+                            "replenishment-content"
+                    },
+
+                    create_replenishment_week_input()
+
+                ),
+
                 {
                     "class":
-                        "send-cell"
+                        "replenishment-cell"
                 }
+
             )
 
         )
@@ -2040,7 +2004,7 @@ def server(
                 "",
                 {
                     "class":
-                        "send-cell"
+                        "replenishment-cell"
                 }
             )
 
@@ -2048,7 +2012,7 @@ def server(
 
 
         # ====================================================
-        # TABLE
+        # TABLE + SEND BUTTON
         # ====================================================
 
         return ui.div(
@@ -2058,11 +2022,15 @@ def server(
                     "delivery-table-wrapper"
             },
 
+            # ------------------------------------------------
+            # THE TABLE
+            # ------------------------------------------------
+
             ui.tags.table(
 
                 {
                     "class":
-                    "delivery-table"
+                        "delivery-table"
                 },
 
                 ui.tags.thead(
@@ -2096,26 +2064,18 @@ def server(
 
             ),
 
-            # =================================================
-            # CONTROLS BELOW THE ENTIRE TABLE
-            # =================================================
+            # ------------------------------------------------
+            # SEND BUTTON
+            #
+            # This is deliberately OUTSIDE the table.
+            # ------------------------------------------------
 
             ui.div(
 
                 {
                     "class":
-                        "delivery-controls"
+                        "send-button-container"
                 },
-
-                ui.span(
-                    "Replenishment week",
-                    {
-                        "class":
-                            "replenishment-label"
-                    }
-                ),
-
-                create_replenishment_week_input(),
 
                 ui.input_action_button(
                     "send",
@@ -2372,7 +2332,7 @@ def server(
 
 
             # ------------------------------------------------
-            # Only process whole numbers
+            # ONLY WHOLE NUMBERS
             # ------------------------------------------------
 
             if not current_value.isdigit():
@@ -2385,7 +2345,7 @@ def server(
 
 
             # ------------------------------------------------
-            # Calculate OTHER weeks
+            # CALCULATE OTHER WEEKS
             # ------------------------------------------------
 
             other_total = 0
@@ -2432,7 +2392,7 @@ def server(
 
 
             # ------------------------------------------------
-            # Remaining quantity
+            # REMAINING QUANTITY
             # ------------------------------------------------
 
             remaining = (
@@ -2447,7 +2407,7 @@ def server(
 
 
             # ------------------------------------------------
-            # Cap current value
+            # CAP CURRENT VALUE
             # ------------------------------------------------
 
             if current_value > remaining:
@@ -2463,9 +2423,9 @@ def server(
         return limit_week
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # REGISTER LIMITERS
-    # --------------------------------------------------------
+    # ========================================================
 
     for week in range(
         1,
@@ -2802,7 +2762,7 @@ def server(
 
 
         # ====================================================
-        # SEND URL TO THE USER'S BROWSER
+        # SEND URL TO USER'S BROWSER
         # ====================================================
 
         await session.send_custom_message(
