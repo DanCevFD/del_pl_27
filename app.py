@@ -197,12 +197,57 @@ destinations = (
 
 
 # ============================================================
+# WEEK NORMALIZATION
+# ============================================================
+
+def normalize_week(week):
+
+    week = int(week)
+
+    while week < 1:
+
+        week += 52
+
+    while week > 52:
+
+        week -= 52
+
+    return week
+
+
+# ============================================================
+# GET WEEK RANGE
+# ============================================================
+
+def get_week_range(
+    min_week,
+    max_week
+):
+
+    weeks = []
+
+    for week in range(
+        int(min_week),
+        int(max_week) + 1
+    ):
+
+        weeks.append(
+            normalize_week(
+                week
+            )
+        )
+
+    return weeks
+
+
+# ============================================================
 # MONTH CALCULATION
 # ============================================================
 
 def get_month_for_week(
     week,
-    country
+    country,
+    original_min_week=None
 ):
 
     min_date = country["min_date"]
@@ -215,13 +260,44 @@ def get_month_for_week(
         min_date
     )
 
-    year = min_date.isocalendar().year
+    # ISO year belonging to the country's minimum date
+    base_year = int(
+        min_date.isocalendar().year
+    )
+
+    normalized_week = normalize_week(
+        week
+    )
+
+    # --------------------------------------------------------
+    # Detect crossing from W52 back to W1.
+    #
+    # Example:
+    #
+    # min_week = 50
+    # max_week = 54
+    #
+    # displayed:
+    # W50 W51 W52 W1 W2
+    #
+    # W1 and W2 belong to the following ISO year.
+    # --------------------------------------------------------
+
+    if original_min_week is not None:
+
+        start_display_week = normalize_week(
+            original_min_week
+        )
+
+        if normalized_week < start_display_week:
+
+            base_year += 1
 
     try:
 
         week_date = pd.Timestamp.fromisocalendar(
-            int(year),
-            int(week),
+            base_year,
+            normalized_week,
             1
         )
 
@@ -1034,6 +1110,10 @@ app_ui = ui.page_fluid(
 
         """),
 
+        # ====================================================
+        # CSS
+        # ====================================================
+
         ui.tags.style("""
 
         body {
@@ -1698,21 +1778,37 @@ def server(
             ]
         )
 
-        weeks = list(
+        # ----------------------------------------------------
+        # IMPORTANT:
+        # Keep the ORIGINAL week numbers internally because
+        # these are the IDs of the inputs.
+        #
+        # Only the displayed week number is normalized.
+        # ----------------------------------------------------
+
+        raw_weeks = list(
             range(
                 min_week,
                 max_week + 1
             )
         )
 
+        display_weeks = [
+            normalize_week(
+                week
+            )
+            for week in raw_weeks
+        ]
+
         months = [
 
             get_month_for_week(
                 week,
-                country
+                country,
+                min_week
             )
 
-            for week in weeks
+            for week in raw_weeks
 
         ]
 
@@ -1768,12 +1864,12 @@ def server(
 
         ]
 
-        for week in weeks:
+        for display_week in display_weeks:
 
             header_cells.append(
 
                 ui.tags.th(
-                    f"W{week}"
+                    f"W{display_week}"
                 )
 
             )
@@ -1926,7 +2022,14 @@ def server(
         ]
 
 
-        for week in weeks:
+        # ----------------------------------------------------
+        # IMPORTANT:
+        # Inputs use RAW weeks, not normalized display weeks.
+        # Example: raw 53 -> input ID scenario_week_53,
+        # while the visible header says W1.
+        # ----------------------------------------------------
+
+        for week in raw_weeks:
 
             quantity_cells.append(
 
@@ -2028,7 +2131,7 @@ def server(
         ]
 
 
-        for week in weeks:
+        for week in raw_weeks:
 
             percentage_cells.append(
 
@@ -2250,6 +2353,9 @@ def server(
             )
 
             total = 0
+
+            # Keep RAW weeks here because these are the
+            # actual Shiny input IDs.
 
             for week in range(
                 min_week,
@@ -2687,6 +2793,10 @@ def server(
             ).strip()
 
 
+            # =================================================
+            # READ RAW WEEK INPUTS
+            # =================================================
+
             for week in range(
                 min_week,
                 max_week + 1
@@ -2714,7 +2824,7 @@ def server(
 
                     status_message.set(
                         f"{scenario_label}: "
-                        f"W{week} must contain "
+                        f"W{normalize_week(week)} must contain "
                         "a whole number."
                     )
 
@@ -2789,13 +2899,20 @@ def server(
 
             for row in rows:
 
-                week = row[
+                raw_week = row[
                     "week"
                 ]
 
                 qty = row[
                     "qty"
                 ]
+
+                # Display/output the REAL ISO week number,
+                # not the raw wrapped value.
+
+                display_week = normalize_week(
+                    raw_week
+                )
 
 
                 if qty == 0:
@@ -2833,7 +2950,7 @@ def server(
 
                         "WEEK":
                             int(
-                                week
+                                display_week
                             ),
 
                         "qty":
