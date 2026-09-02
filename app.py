@@ -205,10 +205,6 @@ def get_month_for_week(
     country
 ):
 
-    min_week = int(
-        country["min_week"]
-    )
-
     min_date = country["min_date"]
 
     if pd.isna(min_date):
@@ -219,31 +215,21 @@ def get_month_for_week(
         min_date
     )
 
-    week_difference = (
-        int(week)
-        - min_week
-    )
+    year = min_date.isocalendar().year
 
-    calculated_date = (
-        min_date
-        + pd.Timedelta(
-            weeks=week_difference
-        )
-    )
+    try:
 
-    max_date = country["max_date"]
-
-    if not pd.isna(max_date):
-
-        max_date = pd.Timestamp(
-            max_date
+        week_date = pd.Timestamp.fromisocalendar(
+            int(year),
+            int(week),
+            1
         )
 
-        if calculated_date > max_date:
+    except ValueError:
 
-            calculated_date = max_date
+        return ""
 
-    return calculated_date.strftime(
+    return week_date.strftime(
         "%B"
     )
 
