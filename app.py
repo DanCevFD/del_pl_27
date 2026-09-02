@@ -23,7 +23,7 @@ OWNER_EMAIL = "Stephan.Gilis@unitedbeetseeds.org"
 # ------------------------------------------------------------
 # CC EMAIL
 #
-CC_EMAIL = "Danny.Cevallos@unitedbeetseeds.org"
+SECOND_OWNER_EMAIL = "Danny.Cevallos@unitedbeetseeds.org"
 
 
 # ============================================================
@@ -2018,23 +2018,19 @@ def server(
     "https://outlook.office.com/mail/deeplink/compose?"
     "to="
     + quote(
-        OWNER_EMAIL,
-        safe=""
+        OWNER_EMAIL
     )
-    + "&cc="
+    + ","
     + quote(
-        CC_EMAIL,
-        safe=""
+        SECOND_OWNER_EMAIL
     )
     + "&subject="
     + quote(
-        subject,
-        safe=""
+        subject
     )
     + "&body="
     + quote(
-        body,
-        safe=""
+        body
     )
 )
 
