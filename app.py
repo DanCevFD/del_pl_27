@@ -14,15 +14,9 @@ APP_TITLE = "Delivery Information"
 # ============================================================
 # EMAIL CONFIGURATION
 # ============================================================
-#
-# MAIN EMAIL
-#
+
 OWNER_EMAIL = "Stephan.Gilis@unitedbeetseeds.org"
 
-
-# ------------------------------------------------------------
-# CC EMAIL
-#
 SECOND_OWNER_EMAIL = "Danny.Cevallos@unitedbeetseeds.org"
 
 
@@ -296,6 +290,7 @@ def create_r_vector(
 ):
 
     columns = [
+        "SCENARIO",
         "DST",
         "DESTINATION",
         "WEEK",
@@ -305,20 +300,12 @@ def create_r_vector(
 
     data = submission_df.copy()
 
-    # --------------------------------------------------------
-    # Convert everything to strings
-    # --------------------------------------------------------
-
     for column in columns:
 
         data[column] = (
             data[column]
             .astype(str)
         )
-
-    # --------------------------------------------------------
-    # Calculate column widths
-    # --------------------------------------------------------
 
     widths = {}
 
@@ -333,10 +320,6 @@ def create_r_vector(
         )
 
         widths[column] = maximum
-
-    # --------------------------------------------------------
-    # Header
-    # --------------------------------------------------------
 
     header_parts = []
 
@@ -359,10 +342,6 @@ def create_r_vector(
         header_line
     ]
 
-    # --------------------------------------------------------
-    # Data rows
-    # --------------------------------------------------------
-
     for _, row in data.iterrows():
 
         parts = []
@@ -374,6 +353,7 @@ def create_r_vector(
             )
 
             if column in [
+                "SCENARIO",
                 "DST",
                 "DESTINATION"
             ]:
@@ -398,10 +378,6 @@ def create_r_vector(
             )
         )
 
-    # --------------------------------------------------------
-    # Convert to R strings
-    # --------------------------------------------------------
-
     quoted_lines = []
 
     for line in lines:
@@ -421,10 +397,6 @@ def create_r_vector(
         quoted_lines.append(
             f'"{safe_line}"'
         )
-
-    # --------------------------------------------------------
-    # Final c()
-    # --------------------------------------------------------
 
     r_vector = (
         "c(\n"
@@ -535,10 +507,6 @@ app_ui = ui.page_fluid(
                 new Date().getMonth();
 
 
-            // ==================================================
-            // ISO WEEK
-            // ==================================================
-
             function getISOWeek(date) {
 
                 const tmp = new Date(
@@ -578,10 +546,6 @@ app_ui = ui.page_fluid(
             }
 
 
-            // ==================================================
-            // GET MONDAY
-            // ==================================================
-
             function getMonday(date) {
 
                 const d =
@@ -603,10 +567,6 @@ app_ui = ui.page_fluid(
             }
 
 
-            // ==================================================
-            // CREATE PICKER
-            // ==================================================
-
             function createWeekPicker(input) {
 
                 if (weekPicker) {
@@ -616,7 +576,6 @@ app_ui = ui.page_fluid(
                     weekPicker = null;
                 }
 
-
                 weekPicker =
                     document.createElement(
                         "div"
@@ -625,26 +584,19 @@ app_ui = ui.page_fluid(
                 weekPicker.id =
                     "custom-week-picker";
 
-
                 document.body.appendChild(
                     weekPicker
                 );
 
-
                 renderWeekPicker(
                     input
                 );
-
 
                 positionWeekPicker(
                     input
                 );
             }
 
-
-            // ==================================================
-            // POSITION PICKER
-            // ==================================================
 
             function positionWeekPicker(input) {
 
@@ -655,17 +607,14 @@ app_ui = ui.page_fluid(
                     return;
                 }
 
-
                 const rect =
                     input.getBoundingClientRect();
-
 
                 weekPicker.style.left =
                     (
                         rect.left +
                         window.scrollX
                     ) + "px";
-
 
                 weekPicker.style.top =
                     (
@@ -676,23 +625,14 @@ app_ui = ui.page_fluid(
             }
 
 
-            // ==================================================
-            // RENDER PICKER
-            // ==================================================
-
             function renderWeekPicker(input) {
 
                 if (!weekPicker) {
                     return;
                 }
 
-
                 weekPicker.innerHTML = "";
 
-
-                // ==================================================
-                // HEADER
-                // ==================================================
 
                 const header =
                     document.createElement(
@@ -763,7 +703,6 @@ app_ui = ui.page_fluid(
                         }
                     );
 
-
                 title.innerHTML =
                     monthName +
                     " " +
@@ -828,10 +767,6 @@ app_ui = ui.page_fluid(
                 );
 
 
-                // ==================================================
-                // WEEK LABEL
-                // ==================================================
-
                 const weekLabel =
                     document.createElement(
                         "div"
@@ -848,10 +783,6 @@ app_ui = ui.page_fluid(
                     weekLabel
                 );
 
-
-                // ==================================================
-                // FIND MONDAYS IN MONTH
-                // ==================================================
 
                 const weeksContainer =
                     document.createElement(
@@ -882,11 +813,6 @@ app_ui = ui.page_fluid(
                         firstDay
                     );
 
-
-                /*
-                 * If the first Monday belongs to the
-                 * previous month, move to the next Monday.
-                 */
 
                 if (
                     monday.getMonth() !==
@@ -928,7 +854,6 @@ app_ui = ui.page_fluid(
                     weekButton.className =
                         "week-picker-week";
 
-
                     weekButton.innerText =
                         "Week " + week;
 
@@ -967,7 +892,7 @@ app_ui = ui.page_fluid(
 
 
                             Shiny.setInputValue(
-                                "replenishment_week",
+                                input.id,
                                 String(week),
                                 {
                                     priority:
@@ -1002,17 +927,13 @@ app_ui = ui.page_fluid(
             }
 
 
-            // ==================================================
-            // OPEN PICKER
-            // ==================================================
-
             document.addEventListener(
                 "click",
                 function(event) {
 
                     const input =
                         event.target.closest(
-                            "#replenishment_week"
+                            "input[id^='replenishment_week_']"
                         );
 
 
@@ -1053,10 +974,6 @@ app_ui = ui.page_fluid(
             );
 
 
-            // ==================================================
-            // CLOSE OUTSIDE CLICK
-            // ==================================================
-
             document.addEventListener(
                 "click",
                 function(event) {
@@ -1071,7 +988,7 @@ app_ui = ui.page_fluid(
                             "#custom-week-picker"
                         ) &&
                         !event.target.closest(
-                            "#replenishment_week"
+                            "input[id^='replenishment_week_']"
                         )
                     ) {
 
@@ -1083,17 +1000,13 @@ app_ui = ui.page_fluid(
             );
 
 
-            // ==================================================
-            // REPOSITION ON SCROLL
-            // ==================================================
-
             window.addEventListener(
                 "scroll",
                 function() {
 
                     const input =
-                        document.getElementById(
-                            "replenishment_week"
+                        document.querySelector(
+                            "input[id^='replenishment_week_']"
                         );
 
                     if (
@@ -1109,17 +1022,13 @@ app_ui = ui.page_fluid(
             );
 
 
-            // ==================================================
-            // REPOSITION ON RESIZE
-            // ==================================================
-
             window.addEventListener(
                 "resize",
                 function() {
 
                     const input =
-                        document.getElementById(
-                            "replenishment_week"
+                        document.querySelector(
+                            "input[id^='replenishment_week_']"
                         );
 
                     if (
@@ -1187,6 +1096,10 @@ app_ui = ui.page_fluid(
             margin-top: 25px;
         }
 
+        .scenario-table + .scenario-table {
+            margin-top: 35px;
+        }
+
         .delivery-table {
             border-collapse: collapse;
             width: auto;
@@ -1212,32 +1125,35 @@ app_ui = ui.page_fluid(
 
         .delivery-table th:nth-child(1),
         .delivery-table td:nth-child(1) {
-            width: 150px;
-            min-width: 150px;
+            width: 90px;
+            min-width: 90px;
+            max-width: 90px;
         }
 
         .delivery-table th:nth-child(2),
         .delivery-table td:nth-child(2) {
-            width: 55px;
-            min-width: 55px;
+            width: 150px;
+            min-width: 150px;
         }
 
         .delivery-table th:nth-child(3),
         .delivery-table td:nth-child(3) {
+            width: 55px;
+            min-width: 55px;
+        }
+
+        .delivery-table th:nth-child(4),
+        .delivery-table td:nth-child(4) {
             width: 85px;
             min-width: 85px;
         }
 
-        .delivery-table th:nth-child(n+4),
-        .delivery-table td:nth-child(n+4) {
+        .delivery-table th:nth-child(n+5),
+        .delivery-table td:nth-child(n+5) {
             width: 65px;
             min-width: 65px;
             max-width: 65px;
         }
-
-        /* ====================================================
-           REPLENISHMENT WEEK COLUMN
-           ==================================================== */
 
         .delivery-table th.replenishment-header,
         .delivery-table td.replenishment-cell {
@@ -1288,7 +1204,7 @@ app_ui = ui.page_fluid(
             box-sizing: border-box;
         }
 
-        #replenishment_week {
+        input[id^="replenishment_week_"] {
             width: 55px !important;
             min-width: 55px !important;
             max-width: 55px !important;
@@ -1311,6 +1227,19 @@ app_ui = ui.page_fluid(
             color: #555;
         }
 
+        .scenario-cell {
+            font-weight: 600;
+            text-align: center !important;
+        }
+
+        .ideal-scenario {
+            color: #218838;
+        }
+
+        .acceptable-scenario {
+            color: #dc3545;
+        }
+
         .ord-cell {
             text-align: right !important;
         }
@@ -1326,21 +1255,32 @@ app_ui = ui.page_fluid(
             font-size: 13px;
         }
 
-        .send-cell {
-            border: none !important;
-            background-color: white !important;
-            padding-left: 15px !important;
-            width: 80px;
-            min-width: 80px;
-        }
-
-        /* ====================================================
-           SEND BELOW TABLE
-           ==================================================== */
-
         .send-controls {
             margin-top: 25px;
             text-align: center;
+        }
+
+        .notes-container {
+            margin-top: 30px;
+        }
+
+        .notes-label {
+            font-size: 15px;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 8px;
+        }
+
+        .notes-container textarea {
+            width: 100%;
+            min-height: 110px;
+            resize: vertical;
+            border: 1px solid #d0d2d5;
+            border-radius: 6px;
+            padding: 10px;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
         }
 
         .success-box {
@@ -1361,10 +1301,6 @@ app_ui = ui.page_fluid(
             border: 1px solid #e0b5b5;
             color: #8a2525;
         }
-
-        /* ====================================================
-           WEEK PICKER
-           ==================================================== */
 
         #custom-week-picker {
             position: absolute;
@@ -1686,12 +1622,13 @@ def server(
     # ========================================================
 
     def create_quantity_input(
+        scenario,
         week
     ):
 
         return ui.input_text(
 
-            f"week_{week}",
+            f"{scenario}_week_{week}",
 
             None,
 
@@ -1706,11 +1643,13 @@ def server(
     # REPLENISHMENT WEEK INPUT
     # ========================================================
 
-    def create_replenishment_week_input():
+    def create_replenishment_week_input(
+        scenario
+    ):
 
         return ui.input_text(
 
-            "replenishment_week",
+            f"replenishment_week_{scenario}",
 
             None,
 
@@ -1722,20 +1661,15 @@ def server(
 
 
     # ========================================================
-    # DELIVERY TABLE
+    # CREATE SCENARIO TABLE
     # ========================================================
 
-    @output
-    @render.ui
-    def delivery_table():
-
-        country = current_country()
-
-        if country is None:
-
-            return ui.HTML(
-                ""
-            )
+    def create_scenario_table(
+        country,
+        scenario,
+        scenario_class,
+        scenario_label
+    ):
 
         destination = str(
             country[
@@ -1818,6 +1752,10 @@ def server(
         header_cells = [
 
             ui.tags.th(
+                "Scenario"
+            ),
+
+            ui.tags.th(
                 "DESTINATION"
             ),
 
@@ -1843,9 +1781,6 @@ def server(
 
             )
 
-        # ----------------------------------------------------
-        # TOTAL COLUMN
-        # ----------------------------------------------------
 
         header_cells.append(
 
@@ -1855,9 +1790,6 @@ def server(
 
         )
 
-        # ----------------------------------------------------
-        # REPLENISHMENT WEEK COLUMN
-        # ----------------------------------------------------
 
         header_cells.append(
 
@@ -1902,6 +1834,14 @@ def server(
                     "class":
                         "month-header"
                 }
+            ),
+
+            ui.tags.th(
+                "",
+                {
+                    "class":
+                        "month-header"
+                }
             )
 
         ]
@@ -1920,7 +1860,6 @@ def server(
 
             )
 
-        # Total month cell
 
         month_row.append(
 
@@ -1934,7 +1873,6 @@ def server(
 
         )
 
-        # Replenishment week month cell
 
         month_row.append(
 
@@ -1954,6 +1892,15 @@ def server(
         # ====================================================
 
         quantity_cells = [
+
+            ui.tags.td(
+                scenario_label,
+                {
+                    "class":
+                        f"blocked-cell scenario-cell "
+                        f"{scenario_class}"
+                }
+            ),
 
             ui.tags.td(
                 destination,
@@ -1981,6 +1928,7 @@ def server(
 
         ]
 
+
         for week in weeks:
 
             quantity_cells.append(
@@ -1988,6 +1936,7 @@ def server(
                 ui.tags.td(
 
                     create_quantity_input(
+                        scenario,
                         week
                     )
 
@@ -2005,7 +1954,7 @@ def server(
             ui.tags.td(
 
                 ui.output_text(
-                    "total_quantity"
+                    f"{scenario}_total_quantity"
                 ),
 
                 {
@@ -2041,7 +1990,9 @@ def server(
                         }
                     ),
 
-                    create_replenishment_week_input()
+                    create_replenishment_week_input(
+                        scenario
+                    )
 
                 ),
 
@@ -2071,9 +2022,14 @@ def server(
 
             ui.tags.td(
                 ""
+            ),
+
+            ui.tags.td(
+                ""
             )
 
         ]
+
 
         for week in weeks:
 
@@ -2082,12 +2038,13 @@ def server(
                 ui.tags.td(
 
                     ui.output_text(
-                        f"percent_{week}"
+                        f"{scenario}_percent_{week}"
                     )
 
                 )
 
             )
+
 
         percentage_cells.append(
 
@@ -2097,7 +2054,6 @@ def server(
 
         )
 
-        # Replenishment week percentage cell
 
         percentage_cells.append(
 
@@ -2155,9 +2111,41 @@ def server(
         )
 
 
-        # ====================================================
-        # TABLE + SEND BELOW TABLE
-        # ====================================================
+        return table
+
+
+    # ========================================================
+    # DELIVERY TABLE
+    # ========================================================
+
+    @output
+    @render.ui
+    def delivery_table():
+
+        country = current_country()
+
+        if country is None:
+
+            return ui.HTML(
+                ""
+            )
+
+
+        ideal_table = create_scenario_table(
+            country,
+            "ideal",
+            "ideal-scenario",
+            "IDEAL"
+        )
+
+
+        acceptable_table = create_scenario_table(
+            country,
+            "acceptable",
+            "acceptable-scenario",
+            "ACCEPTABLE"
+        )
+
 
         return ui.div(
 
@@ -2165,10 +2153,53 @@ def server(
 
                 {
                     "class":
-                        "delivery-table-wrapper"
+                        "delivery-table-wrapper scenario-table"
                 },
 
-                table
+                ideal_table
+
+            ),
+
+            ui.div(
+
+                {
+                    "class":
+                        "delivery-table-wrapper scenario-table"
+                },
+
+                acceptable_table
+
+            ),
+
+            ui.div(
+
+                {
+                    "class":
+                        "notes-container"
+                },
+
+                ui.div(
+                    {
+                        "class":
+                            "notes-label"
+                    },
+
+                    "Additional notes"
+                ),
+
+                ui.tags.textarea(
+                    "",
+                    {
+                        "id":
+                            "additional_notes",
+
+                        "name":
+                            "additional_notes",
+
+                        "placeholder":
+                            "Add any additional notes here..."
+                    }
+                )
 
             ),
 
@@ -2190,72 +2221,90 @@ def server(
 
 
     # ========================================================
-    # TOTAL
+    # TOTAL QUANTITY
     # ========================================================
 
-    @output
-    @render.text
-    def total_quantity():
+    def make_total_renderer(
+        scenario
+    ):
 
-        country = current_country()
-
-        if country is None:
-
-            return ""
-
-        min_week = int(
-            country[
-                "min_week"
-            ]
+        @output(
+            id=f"{scenario}_total_quantity"
         )
+        @render.text
+        def total_quantity():
 
-        max_week = int(
-            country[
-                "max_week"
-            ]
-        )
+            country = current_country()
 
-        total = 0
+            if country is None:
 
-        for week in range(
-            min_week,
-            max_week + 1
-        ):
+                return ""
 
-            value = getattr(
-                input,
-                f"week_{week}"
-            )()
+            min_week = int(
+                country[
+                    "min_week"
+                ]
+            )
 
-            if not value:
+            max_week = int(
+                country[
+                    "max_week"
+                ]
+            )
 
-                continue
+            total = 0
 
-            try:
+            for week in range(
+                min_week,
+                max_week + 1
+            ):
 
-                total += float(
-                    value
+                value = getattr(
+                    input,
+                    f"{scenario}_week_{week}"
+                )()
+
+                if not value:
+
+                    continue
+
+                try:
+
+                    total += float(
+                        value
+                    )
+
+                except Exception:
+
+                    continue
+
+
+            if total == int(
+                total
+            ):
+
+                return str(
+                    int(total)
                 )
 
-            except Exception:
-
-                continue
-
-
-        if total == int(
-            total
-        ):
-
             return str(
-                int(total)
+                round(
+                    total,
+                    2
+                )
             )
 
-        return str(
-            round(
-                total,
-                2
-            )
-        )
+
+        return total_quantity
+
+
+    make_total_renderer(
+        "ideal"
+    )
+
+    make_total_renderer(
+        "acceptable"
+    )
 
 
     # ========================================================
@@ -2263,11 +2312,12 @@ def server(
     # ========================================================
 
     def make_percentage_renderer(
+        scenario,
         week
     ):
 
         @output(
-            id=f"percent_{week}"
+            id=f"{scenario}_percent_{week}"
         )
         @render.text
         def percentage():
@@ -2299,7 +2349,7 @@ def server(
 
                 value = getattr(
                     input,
-                    f"week_{w}"
+                    f"{scenario}_week_{w}"
                 )()
 
                 if not value:
@@ -2319,8 +2369,9 @@ def server(
 
             value = getattr(
                 input,
-                f"week_{week}"
+                f"{scenario}_week_{week}"
             )()
+
 
             if (
                 not value
@@ -2328,6 +2379,7 @@ def server(
             ):
 
                 return "0%"
+
 
             try:
 
@@ -2349,18 +2401,20 @@ def server(
         return percentage
 
 
-    # ========================================================
-    # REGISTER WEEK OUTPUTS
-    # ========================================================
+    for scenario in [
+        "ideal",
+        "acceptable"
+    ]:
 
-    for week in range(
-        1,
-        54
-    ):
+        for week in range(
+            1,
+            54
+        ):
 
-        make_percentage_renderer(
-            week
-        )
+            make_percentage_renderer(
+                scenario,
+                week
+            )
 
 
     # ========================================================
@@ -2368,6 +2422,7 @@ def server(
     # ========================================================
 
     def make_week_limiter(
+        scenario,
         week
     ):
 
@@ -2376,7 +2431,7 @@ def server(
             lambda:
                 getattr(
                     input,
-                    f"week_{week}"
+                    f"{scenario}_week_{week}"
                 )()
         )
         def limit_week():
@@ -2421,7 +2476,7 @@ def server(
 
             current_value = getattr(
                 input,
-                f"week_{week}"
+                f"{scenario}_week_{week}"
             )()
 
             if not current_value:
@@ -2433,10 +2488,6 @@ def server(
             ).strip()
 
 
-            # ------------------------------------------------
-            # Only process whole numbers
-            # ------------------------------------------------
-
             if not current_value.isdigit():
 
                 return
@@ -2447,7 +2498,7 @@ def server(
 
 
             # ------------------------------------------------
-            # Calculate OTHER weeks
+            # OTHER WEEKS
             # ------------------------------------------------
 
             other_total = 0
@@ -2464,6 +2515,7 @@ def server(
                 ]
             )
 
+
             for other_week in range(
                 min_week,
                 max_week + 1
@@ -2475,7 +2527,7 @@ def server(
 
                 other_value = getattr(
                     input,
-                    f"week_{other_week}"
+                    f"{scenario}_week_{other_week}"
                 )()
 
                 if not other_value:
@@ -2493,10 +2545,6 @@ def server(
                     )
 
 
-            # ------------------------------------------------
-            # Remaining quantity
-            # ------------------------------------------------
-
             remaining = (
                 ord_value
                 - other_total
@@ -2508,14 +2556,10 @@ def server(
             )
 
 
-            # ------------------------------------------------
-            # Cap current value
-            # ------------------------------------------------
-
             if current_value > remaining:
 
                 ui.update_text(
-                    f"week_{week}",
+                    f"{scenario}_week_{week}",
                     value=str(
                         remaining
                     )
@@ -2525,18 +2569,20 @@ def server(
         return limit_week
 
 
-    # --------------------------------------------------------
-    # REGISTER LIMITERS
-    # --------------------------------------------------------
+    for scenario in [
+        "ideal",
+        "acceptable"
+    ]:
 
-    for week in range(
-        1,
-        54
-    ):
+        for week in range(
+            1,
+            54
+        ):
 
-        make_week_limiter(
-            week
-        )
+            make_week_limiter(
+                scenario,
+                week
+            )
 
 
     # ========================================================
@@ -2588,204 +2634,247 @@ def server(
 
 
         # ====================================================
-        # WEEKS
+        # BUILD SCENARIO DATA
         # ====================================================
 
-        min_week = int(
-            country[
-                "min_week"
-            ]
-        )
+        all_output_rows = []
 
-        max_week = int(
-            country[
-                "max_week"
-            ]
-        )
-
-        rows = []
-
-        total = 0
+        scenario_vectors = []
 
 
-        for week in range(
-            min_week,
-            max_week + 1
-        ):
+        for scenario, scenario_label in [
+            ("ideal", "IDEAL"),
+            ("acceptable", "ACCEPTABLE")
+        ]:
 
-            value = getattr(
-                input,
-                f"week_{week}"
-            )()
+            min_week = int(
+                country[
+                    "min_week"
+                ]
+            )
 
-            if not value:
+            max_week = int(
+                country[
+                    "max_week"
+                ]
+            )
 
-                value = "0"
+            rows = []
 
-            value = str(
-                value
-            ).strip()
+            total = 0
 
 
-            if not value.isdigit():
+            for week in range(
+                min_week,
+                max_week + 1
+            ):
+
+                value = getattr(
+                    input,
+                    f"{scenario}_week_{week}"
+                )()
+
+                if not value:
+
+                    value = "0"
+
+                value = str(
+                    value
+                ).strip()
+
+
+                if not value.isdigit():
+
+                    status_type.set(
+                        "error"
+                    )
+
+                    status_message.set(
+                        f"{scenario_label}: "
+                        f"W{week} must contain "
+                        "a whole number."
+                    )
+
+                    return
+
+
+                numeric_value = int(
+                    value
+                )
+
+                total += numeric_value
+
+                rows.append(
+
+                    {
+                        "week":
+                            week,
+
+                        "qty":
+                            numeric_value
+                    }
+
+                )
+
+
+            # =================================================
+            # ORD CHECK
+            # =================================================
+
+            if (
+                ord_value is not None
+                and total > ord_value
+            ):
 
                 status_type.set(
                     "error"
                 )
 
                 status_message.set(
-                    f"W{week} must contain "
-                    "a whole number."
+                    f"{scenario_label}: The total quantity "
+                    f"cannot exceed the ORD value of "
+                    f"{ord_value:,}."
                 )
 
                 return
 
 
-            numeric_value = int(
-                value
-            )
+            # =================================================
+            # REQUIRE QUANTITY
+            # =================================================
 
-            total += numeric_value
+            if total <= 0:
 
-            rows.append(
+                status_type.set(
+                    "error"
+                )
 
-                {
-                    "week":
-                        week,
+                status_message.set(
+                    f"Please enter at least one quantity "
+                    f"for the {scenario_label} scenario."
+                )
 
-                    "qty":
-                        numeric_value
-                }
-
-            )
-
-
-        # ====================================================
-        # FINAL ORD CHECK
-        # ====================================================
-
-        if (
-            ord_value is not None
-            and total > ord_value
-        ):
-
-            status_type.set(
-                "error"
-            )
-
-            status_message.set(
-                "The total quantity cannot "
-                f"exceed the ORD value of "
-                f"{ord_value:,}."
-            )
-
-            return
+                return
 
 
-        # ====================================================
-        # REQUIRE QUANTITY
-        # ====================================================
+            # =================================================
+            # BUILD OUTPUT
+            # =================================================
 
-        if total <= 0:
-
-            status_type.set(
-                "error"
-            )
-
-            status_message.set(
-                "Please enter at least one quantity."
-            )
-
-            return
+            output_rows = []
 
 
-        # ====================================================
-        # BUILD OUTPUT
-        # ====================================================
+            for row in rows:
 
-        output_rows = []
+                week = row[
+                    "week"
+                ]
 
-
-        for row in rows:
-
-            week = row[
-                "week"
-            ]
-
-            qty = row[
-                "qty"
-            ]
-
-            if qty == 0:
-
-                continue
+                qty = row[
+                    "qty"
+                ]
 
 
-            percentage = (
-                qty
-                / total
-                * 100
-            )
+                if qty == 0:
+
+                    continue
 
 
-            output_rows.append(
+                percentage = (
+                    qty
+                    / total
+                    * 100
+                )
 
-                {
 
-                    "DST":
-                        str(
-                            country[
-                                "DST"
-                            ]
-                        ),
+                output_rows.append(
 
-                    "DESTINATION":
-                        str(
-                            country[
-                                "DESTINATION_NAME"
-                            ]
-                        ),
+                    {
 
-                    "WEEK":
-                        int(
-                            week
-                        ),
+                        "SCENARIO":
+                            scenario_label,
 
-                    "qty":
-                        int(
-                            qty
-                        ),
+                        "DST":
+                            str(
+                                country[
+                                    "DST"
+                                ]
+                            ),
 
-                    "percent":
-                        f"{percentage:.0f}%"
+                        "DESTINATION":
+                            str(
+                                country[
+                                    "DESTINATION_NAME"
+                                ]
+                            ),
 
-                }
+                        "WEEK":
+                            int(
+                                week
+                            ),
+
+                        "qty":
+                            int(
+                                qty
+                            ),
+
+                        "percent":
+                            f"{percentage:.0f}%"
+
+                    }
+
+                )
+
+
+            scenario_df = pd.DataFrame(
+
+                output_rows,
+
+                columns=[
+                    "SCENARIO",
+                    "DST",
+                    "DESTINATION",
+                    "WEEK",
+                    "qty",
+                    "percent"
+                ]
 
             )
 
 
-        submission_df = pd.DataFrame(
+            all_output_rows.extend(
+                output_rows
+            )
 
-            output_rows,
 
-            columns=[
-                "DST",
-                "DESTINATION",
-                "WEEK",
-                "qty",
-                "percent"
-            ]
-
-        )
+            scenario_vectors.append(
+                create_r_vector(
+                    scenario_df
+                )
+            )
 
 
         # ====================================================
-        # CREATE R VECTOR
+        # ADDITIONAL NOTES
         # ====================================================
 
-        r_vector = create_r_vector(
-            submission_df
-        )
+        notes = ""
+
+        try:
+
+            notes = input.additional_notes()
+
+        except Exception:
+
+            notes = ""
+
+        if notes is None:
+
+            notes = ""
+
+        notes = str(
+            notes
+        ).strip()
 
 
         # ====================================================
@@ -2798,10 +2887,47 @@ def server(
         )
 
 
+        body_parts = [
+
+            "Please see below the delivery information",
+
+            "",
+
+            "IDEAL scenario:",
+
+            scenario_vectors[0],
+
+            "",
+
+            "ACCEPTABLE scenario:",
+
+            scenario_vectors[1]
+
+        ]
+
+
+        if notes:
+
+            body_parts.extend(
+
+                [
+
+                    "",
+
+                    "Additional notes:",
+
+                    notes
+
+                ]
+
+            )
+
+
         body = (
-            "Please see below the delivery information\n"
-            "\n"
-            f"{r_vector}\n"
+            "\n".join(
+                body_parts
+            )
+            + "\n"
         )
 
 
@@ -2831,7 +2957,7 @@ def server(
 
 
         # ====================================================
-        # SEND URL TO THE USER'S BROWSER
+        # SEND URL TO BROWSER
         # ====================================================
 
         await session.send_custom_message(
