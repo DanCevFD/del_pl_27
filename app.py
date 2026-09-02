@@ -1,4 +1,3 @@
-```python
 from shiny import App, ui, render, reactive, Inputs, Outputs, Session
 import pandas as pd
 import re
@@ -2870,4 +2869,3 @@ app = App(
     app_ui,
     server
 )
-```
