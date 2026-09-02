@@ -197,6 +197,72 @@ destinations = (
 
 
 # ============================================================
+# WEEK RANGE
+# ============================================================
+
+def get_week_range(
+    min_week,
+    max_week
+):
+
+    min_week = int(min_week)
+    max_week = int(max_week)
+
+    # --------------------------------------------------------
+    # Week 0 is displayed as W52
+    # --------------------------------------------------------
+
+    if min_week == 0:
+
+        display_start = 52
+
+    else:
+
+        display_start = min_week
+
+
+    # --------------------------------------------------------
+    # Number of weeks represented by the original range
+    # --------------------------------------------------------
+
+    number_of_weeks = (
+        max_week
+        - min_week
+        + 1
+    )
+
+
+    # --------------------------------------------------------
+    # Build the displayed week sequence
+    # --------------------------------------------------------
+
+    weeks = []
+
+    current_week = display_start
+
+    for _ in range(
+        number_of_weeks
+    ):
+
+        if current_week > 52:
+
+            current_week = 1
+
+        if current_week == 0:
+
+            current_week = 52
+
+        weeks.append(
+            current_week
+        )
+
+        current_week += 1
+
+
+    return weeks
+
+
+# ============================================================
 # MONTH CALCULATION
 # ============================================================
 
@@ -215,14 +281,61 @@ def get_month_for_week(
         min_date
     )
 
-    year = min_date.isocalendar().year
+    base_year = (
+        min_date
+        .isocalendar()
+        .year
+    )
+
+    min_week = int(
+        country["min_week"]
+    )
+
+    if min_week == 0:
+
+        normalized_min_week = 52
+
+    else:
+
+        normalized_min_week = min_week
+
+
+    display_week = int(
+        week
+    )
+
+
+    # --------------------------------------------------------
+    # If the displayed week is smaller than the starting week,
+    # it belongs to the following ISO year.
+    # --------------------------------------------------------
+
+    if (
+        display_week
+        < normalized_min_week
+    ):
+
+        year = (
+            int(base_year)
+            + 1
+        )
+
+    else:
+
+        year = int(
+            base_year
+        )
+
 
     try:
 
-        week_date = pd.Timestamp.fromisocalendar(
-            int(year),
-            int(week),
-            1
+        week_date = (
+            pd.Timestamp
+            .fromisocalendar(
+                year,
+                display_week,
+                1
+            )
         )
 
     except ValueError:
@@ -1688,11 +1801,13 @@ def server(
             ]
         )
 
-        weeks = list(
-            range(
-                min_week,
-                max_week + 1
-            )
+        # ====================================================
+        # CHANGED: USE CYCLIC WEEK RANGE
+        # ====================================================
+
+        weeks = get_week_range(
+            min_week,
+            max_week
         )
 
         months = [
@@ -2241,10 +2356,16 @@ def server(
 
             total = 0
 
-            for week in range(
+            # =================================================
+            # CHANGED: USE CYCLIC WEEK RANGE
+            # =================================================
+
+            weeks = get_week_range(
                 min_week,
-                max_week + 1
-            ):
+                max_week
+            )
+
+            for week in weeks:
 
                 value = getattr(
                     input,
@@ -2329,10 +2450,16 @@ def server(
 
             total = 0
 
-            for w in range(
+            # =================================================
+            # CHANGED: USE CYCLIC WEEK RANGE
+            # =================================================
+
+            weeks = get_week_range(
                 min_week,
-                max_week + 1
-            ):
+                max_week
+            )
+
+            for w in weeks:
 
                 value = getattr(
                     input,
@@ -2503,10 +2630,17 @@ def server(
             )
 
 
-            for other_week in range(
+            # =================================================
+            # CHANGED: USE CYCLIC WEEK RANGE
+            # =================================================
+
+            weeks = get_week_range(
                 min_week,
-                max_week + 1
-            ):
+                max_week
+            )
+
+
+            for other_week in weeks:
 
                 if other_week == week:
 
@@ -2677,10 +2811,17 @@ def server(
             ).strip()
 
 
-            for week in range(
+            # =================================================
+            # CHANGED: USE CYCLIC WEEK RANGE
+            # =================================================
+
+            weeks = get_week_range(
                 min_week,
-                max_week + 1
-            ):
+                max_week
+            )
+
+
+            for week in weeks:
 
                 value = getattr(
                     input,
