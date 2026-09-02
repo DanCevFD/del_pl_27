@@ -1295,9 +1295,9 @@ app_ui = ui.page_fluid(
         }
 
         .delivery-table input[type="text"] {
-            width: 55px !important;
-            min-width: 55px !important;
-            max-width: 55px !important;
+            width: 65px !important;
+            min-width: 65px !important;
+            max-width: 65px !important;
             height: 32px !important;
             padding: 3px !important;
             text-align: center;
