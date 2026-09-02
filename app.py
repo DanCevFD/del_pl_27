@@ -2429,7 +2429,7 @@ def server(
 
             if country is None:
 
-                return ""
+                return "0%"
 
             min_week = int(
                 country[
@@ -2445,15 +2445,25 @@ def server(
 
             total = 0
 
+            # ------------------------------------------------
+            # Calculate the total using RAW week IDs
+            # ------------------------------------------------
+
             for w in range(
                 min_week,
                 max_week + 1
             ):
 
-                value = getattr(
-                    input,
-                    f"{scenario}_week_{w}"
-                )()
+                try:
+
+                    value = getattr(
+                        input,
+                        f"{scenario}_week_{w}"
+                    )()
+
+                except Exception:
+
+                    value = ""
 
                 if not value:
 
@@ -2470,11 +2480,25 @@ def server(
                     continue
 
 
-            value = getattr(
-                input,
-                f"{scenario}_week_{week}"
-            )()
+            # ------------------------------------------------
+            # Get the current week's RAW value
+            # ------------------------------------------------
 
+            try:
+
+                value = getattr(
+                    input,
+                    f"{scenario}_week_{week}"
+                )()
+
+            except Exception:
+
+                value = ""
+
+
+            # ------------------------------------------------
+            # Empty week / zero total
+            # ------------------------------------------------
 
             if (
                 not value
@@ -2483,6 +2507,10 @@ def server(
 
                 return "0%"
 
+
+            # ------------------------------------------------
+            # Calculate percentage
+            # ------------------------------------------------
 
             try:
 
@@ -2504,14 +2532,36 @@ def server(
         return percentage
 
 
+    # --------------------------------------------------------
+    # IMPORTANT:
+    #
+    # The table uses RAW week numbers for its IDs.
+    #
+    # Therefore we must create percentage renderers for
+    # raw values such as:
+    #
+    # 0
+    # 1
+    # 2
+    # ...
+    # 52
+    # 53
+    # 54
+    #
+    # rather than only 1..53.
+    #
+    # This prevents the percentage cell from showing the
+    # permanent loading spinner.
+    # --------------------------------------------------------
+
     for scenario in [
         "ideal",
         "acceptable"
     ]:
 
         for week in range(
-            1,
-            54
+            -10,
+            71
         ):
 
             make_percentage_renderer(
