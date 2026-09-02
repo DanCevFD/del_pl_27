@@ -1250,9 +1250,9 @@ app_ui = ui.page_fluid(
 
         .delivery-table th:nth-child(n+5),
         .delivery-table td:nth-child(n+5) {
-            width: 65px;
-            min-width: 65px;
-            max-width: 65px;
+            width: 55px;
+            min-width: 55px;
+            max-width: 55px;
         }
 
         .delivery-table th.replenishment-header,
