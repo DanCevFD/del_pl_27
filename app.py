@@ -2015,24 +2015,28 @@ def server(
         # ====================================================
 
         outlook_url = (
-            "https://outlook.office.com/mail/deeplink/compose?"
-            "to="
-            + quote(
-                OWNER_EMAIL
-            )
-            + "&cc="
-            + quote(
-                CC_EMAIL
-            )
-            + "&subject="
-            + quote(
-                subject
-            )
-            + "&body="
-            + quote(
-                body
-            )
-        )
+    "https://outlook.office.com/mail/deeplink/compose?"
+    "to="
+    + quote(
+        OWNER_EMAIL,
+        safe=""
+    )
+    + "&cc="
+    + quote(
+        CC_EMAIL,
+        safe=""
+    )
+    + "&subject="
+    + quote(
+        subject,
+        safe=""
+    )
+    + "&body="
+    + quote(
+        body,
+        safe=""
+    )
+)
 
 
         # ====================================================
