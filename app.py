@@ -295,7 +295,8 @@ def create_r_vector(
         "DESTINATION",
         "WEEK",
         "qty",
-        "percent"
+        "percent",
+        "REPLENISHMENT_WEEK"
     ]
 
     data = submission_df.copy()
@@ -2664,6 +2665,32 @@ def server(
             total = 0
 
 
+            # =================================================
+            # REPLENISHMENT WEEK
+            # =================================================
+
+            replenishment_week = ""
+
+            try:
+
+                replenishment_week = getattr(
+                    input,
+                    f"replenishment_week_{scenario}"
+                )()
+
+            except Exception:
+
+                replenishment_week = ""
+
+            if replenishment_week is None:
+
+                replenishment_week = ""
+
+            replenishment_week = str(
+                replenishment_week
+            ).strip()
+
+
             for week in range(
                 min_week,
                 max_week + 1
@@ -2819,7 +2846,10 @@ def server(
                             ),
 
                         "percent":
-                            f"{percentage:.0f}%"
+                            f"{percentage:.0f}%",
+
+                        "REPLENISHMENT_WEEK":
+                            replenishment_week
 
                     }
 
@@ -2836,7 +2866,8 @@ def server(
                     "DESTINATION",
                     "WEEK",
                     "qty",
-                    "percent"
+                    "percent",
+                    "REPLENISHMENT_WEEK"
                 ]
 
             )
