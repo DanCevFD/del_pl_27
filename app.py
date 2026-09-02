@@ -1054,7 +1054,7 @@ app_ui = ui.page_fluid(
 
 
         # ====================================================
-        # ORIGINAL CSS
+        # CSS
         # ====================================================
 
         ui.tags.style("""
@@ -1224,6 +1224,25 @@ app_ui = ui.page_fluid(
 
 
         /* =====================================================
+           REPLENISHMENT CONTROLS
+           ===================================================== */
+
+        .delivery-controls {
+            width: 100%;
+            margin-top: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .replenishment-label {
+            font-size: 12px;
+            color: #555;
+        }
+
+
+        /* =====================================================
            WEEK PICKER
            ===================================================== */
 
@@ -1384,17 +1403,6 @@ app_ui = ui.page_fluid(
             box-sizing: border-box;
 
             cursor: pointer;
-
-        }
-
-
-        .replenishment-label {
-
-            font-size: 12px;
-
-            color: #555;
-
-            margin-right: 5px;
 
         }
 
@@ -1813,6 +1821,8 @@ def server(
 
         )
 
+        # Keep the final empty column so the
+        # existing table geometry is unchanged.
         header_cells.append(
 
             ui.tags.th(
@@ -1963,33 +1973,20 @@ def server(
 
 
         # ====================================================
-        # SEND + REPLENISHMENT WEEK
+        # FINAL EMPTY CELL
+        #
+        # The replenishment-week selector and Send button
+        # are intentionally NOT placed here anymore.
         # ====================================================
 
         quantity_cells.append(
 
             ui.tags.td(
-
-                ui.span(
-                    "Week",
-                    {
-                        "class":
-                            "replenishment-label"
-                    }
-                ),
-
-                create_replenishment_week_input(),
-
-                ui.input_action_button(
-                    "send",
-                    "Send"
-                ),
-
+                "",
                 {
                     "class":
                         "send-cell"
                 }
-
             )
 
         )
@@ -2095,6 +2092,34 @@ def server(
                         percentage_cells
                     )
 
+                )
+
+            ),
+
+            # =================================================
+            # CONTROLS BELOW THE ENTIRE TABLE
+            # =================================================
+
+            ui.div(
+
+                {
+                    "class":
+                        "delivery-controls"
+                },
+
+                ui.span(
+                    "Replenishment week",
+                    {
+                        "class":
+                            "replenishment-label"
+                    }
+                ),
+
+                create_replenishment_week_input(),
+
+                ui.input_action_button(
+                    "send",
+                    "Send"
                 )
 
             )
