@@ -1045,13 +1045,6 @@ app_ui = ui.page_fluid(
                         new Date().getMonth();
 
 
-                    /*
-                     * If there is already a selected week,
-                     * keep the current month/year picker
-                     * behavior rather than changing the
-                     * value.
-                     */
-
                     createWeekPicker(
                         input
                     );
@@ -1248,25 +1241,36 @@ app_ui = ui.page_fluid(
 
         .delivery-table th.replenishment-header,
         .delivery-table td.replenishment-cell {
-            width: 150px !important;
-            min-width: 150px !important;
-            max-width: 150px !important;
+            width: 120px !important;
+            min-width: 120px !important;
+            max-width: 120px !important;
         }
 
         .replenishment-header {
             background-color: #f0f1f3 !important;
+            white-space: normal !important;
+            line-height: 1.2;
         }
 
         .replenishment-cell {
             background-color: white;
             vertical-align: middle;
+            text-align: center !important;
+        }
+
+        .replenishment-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            width: 100%;
         }
 
         .replenishment-label {
             display: inline-block;
             font-size: 12px;
             color: #555;
-            margin-right: 5px;
+            margin-right: 0;
             vertical-align: middle;
         }
 
@@ -1335,8 +1339,8 @@ app_ui = ui.page_fluid(
            ==================================================== */
 
         .send-controls {
-            margin-top: 12px;
-            text-align: right;
+            margin-top: 25px;
+            text-align: center;
         }
 
         .success-box {
@@ -1822,7 +1826,9 @@ def server(
             ),
 
             ui.tags.th(
-                "ord"
+                ui.HTML(
+                    "Forecast<br>2027"
+                )
             )
 
         ]
@@ -1856,7 +1862,9 @@ def server(
         header_cells.append(
 
             ui.tags.th(
-                "Replenishment week",
+                ui.HTML(
+                    "Replenishment<br>week"
+                ),
                 {
                     "class":
                         "replenishment-header"
@@ -2018,15 +2026,24 @@ def server(
 
             ui.tags.td(
 
-                ui.span(
-                    "Week",
+                ui.div(
+
                     {
                         "class":
-                            "replenishment-label"
-                    }
-                ),
+                            "replenishment-content"
+                    },
 
-                create_replenishment_week_input(),
+                    ui.span(
+                        "Week",
+                        {
+                            "class":
+                                "replenishment-label"
+                        }
+                    ),
+
+                    create_replenishment_week_input()
+
+                ),
 
                 {
                     "class":
