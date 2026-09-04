@@ -1700,6 +1700,7 @@ app_ui = ui.page_fluid(
         }
 
         """)
+
     ),
 
     ui.div(
@@ -1718,17 +1719,20 @@ app_ui = ui.page_fluid(
             APP_TITLE
         ),
 
+        # ====================================================
+        # TUTORIAL LINK
+        # ====================================================
+
         ui.div(
             {
                 "class":
                     "subtitle"
             },
 
-            "Select a destination and enter the "
-            "delivery quantities for each week. ",
+            "Select a destination and enter the delivery quantities for each week. ",
 
-            ui.a(
-                "(tutorial)",
+            ui.tags.a(
+                "(Tutorial)",
                 href="https://github.com/DanCevFD/del_pl_27/raw/refs/heads/main/test_app_1.mp4",
                 target="_blank",
                 rel="noopener noreferrer"
