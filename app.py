@@ -567,20 +567,22 @@ app_ui = ui.page_fluid(
                     return;
                 }
 
-                button.disabled =
-                    !downloadButtonEnabled;
-
-                button.classList.toggle(
-                    "disabled",
-                    !downloadButtonEnabled
-                );
-
-                button.setAttribute(
-                    "aria-disabled",
-                    String(!downloadButtonEnabled)
-                );
-
                 if (!downloadButtonEnabled) {
+
+                    // Completely disable the download control
+                    button.setAttribute(
+                        "disabled",
+                        "disabled"
+                    );
+
+                    button.classList.add(
+                        "disabled"
+                    );
+
+                    button.setAttribute(
+                        "aria-disabled",
+                        "true"
+                    );
 
                     button.setAttribute(
                         "tabindex",
@@ -593,6 +595,20 @@ app_ui = ui.page_fluid(
                 }
 
                 else {
+
+                    // Completely re-enable the download control
+                    button.removeAttribute(
+                        "disabled"
+                    );
+
+                    button.classList.remove(
+                        "disabled"
+                    );
+
+                    button.setAttribute(
+                        "aria-disabled",
+                        "false"
+                    );
 
                     button.removeAttribute(
                         "tabindex"
@@ -1745,7 +1761,7 @@ def server(
             ui.div(
                 {
                     "class":
-                        "section-title"
+                    "section-title"
                 },
 
                 "Destination"
@@ -2163,7 +2179,6 @@ def server(
 
 
         # ----------------------------------------------------
-        # IMPORTANT:
         # Inputs use RAW weeks, not normalized display weeks.
         # Example: raw 53 -> input ID scenario_week_53,
         # while the visible header says W1.
@@ -2675,10 +2690,6 @@ def server(
     # --------------------------------------------------------
     # Register a renderer for every RAW week that can occur
     # in the CSV.
-    #
-    # This is important because the visible week can be
-    # normalized (e.g. raw 53 -> W1), but the Shiny input ID
-    # remains scenario_week_53.
     # --------------------------------------------------------
 
     all_raw_weeks = sorted(
@@ -2861,10 +2872,6 @@ def server(
     # --------------------------------------------------------
     # Register the limiter for every RAW week that can occur
     # in the CSV.
-    #
-    # This is important because the visible week can be
-    # normalized (e.g. raw 53 -> W1), but the Shiny input ID
-    # remains scenario_week_53.
     # --------------------------------------------------------
 
     all_raw_weeks = sorted(
@@ -3222,9 +3229,6 @@ def server(
                     "qty"
                 ]
 
-                # Display/output the REAL ISO week number,
-                # not the raw wrapped value.
-
                 display_week = normalize_week(
                     raw_week
                 )
@@ -3362,9 +3366,11 @@ def server(
 
         )
 
+
         combined_vector = create_r_vector(
             combined_df
         )
+
 
         body_parts = [
 
@@ -3707,6 +3713,7 @@ def server(
             index=False,
             sep=";"
         )
+
 
     # ========================================================
     # STATUS
