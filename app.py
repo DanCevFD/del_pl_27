@@ -562,19 +562,30 @@ app_ui = ui.page_fluid(
 
         (function() {
 
-            function hasAnyWeekValue() {
+            function hasScenarioWeekValue(
+                scenario
+            ) {
 
                 const weekInputs =
                     document.querySelectorAll(
-                        "input[id^='ideal_week_'], " +
-                        "input[id^='acceptable_week_']"
+                        "input[id^='" +
+                        scenario +
+                        "_week_']"
                     );
 
                 for (const input of weekInputs) {
 
                     if (
                         input.value &&
-                        input.value.trim() !== ""
+                        input.value.trim() !== "" &&
+                        !isNaN(
+                            Number(
+                                input.value.trim()
+                            )
+                        ) &&
+                        Number(
+                            input.value.trim()
+                        ) > 0
                     ) {
 
                         return true;
@@ -585,25 +596,25 @@ app_ui = ui.page_fluid(
             }
 
 
-            function hasReplenishmentWeek() {
+            function hasScenarioReplenishmentWeek(
+                scenario
+            ) {
 
-                const replenishmentInputs =
-                    document.querySelectorAll(
-                        "input[id^='replenishment_week_']"
+                const replenishmentInput =
+                    document.getElementById(
+                        "replenishment_week_" +
+                        scenario
                     );
 
-                for (const input of replenishmentInputs) {
+                if (!replenishmentInput) {
 
-                    if (
-                        input.value &&
-                        input.value.trim() !== ""
-                    ) {
-
-                        return true;
-                    }
+                    return false;
                 }
 
-                return false;
+                return (
+                    replenishmentInput.value &&
+                    replenishmentInput.value.trim() !== ""
+                );
             }
 
 
@@ -628,9 +639,27 @@ app_ui = ui.page_fluid(
                 }
 
 
+                const idealHasData =
+                    hasScenarioWeekValue(
+                        "ideal"
+                    ) &&
+                    hasScenarioReplenishmentWeek(
+                        "ideal"
+                    );
+
+
+                const acceptableHasData =
+                    hasScenarioWeekValue(
+                        "acceptable"
+                    ) &&
+                    hasScenarioReplenishmentWeek(
+                        "acceptable"
+                    );
+
+
                 const enabled =
-                    hasAnyWeekValue() &&
-                    hasReplenishmentWeek();
+                    idealHasData &&
+                    acceptableHasData;
 
 
                 if (sendButton) {
@@ -787,10 +816,6 @@ app_ui = ui.page_fluid(
 
             let weekPicker = null;
 
-            // ------------------------------------------------
-            // Start on the CURRENT month and CURRENT year.
-            // ------------------------------------------------
-
             let pickerYear =
                 new Date().getFullYear();
 
@@ -858,23 +883,69 @@ app_ui = ui.page_fluid(
             }
 
 
-            // ------------------------------------------------
-            // Determine whether the picker is at the current
-            // month/year. This is the earliest point the user
-            // is allowed to browse to.
-            // ------------------------------------------------
+            // =================================================
+            // NEW:
+            // Return the Monday of the current ISO week.
+            // This is the earliest week the user can select.
+            // =================================================
 
-            function isCurrentMonth() {
+            function getCurrentWeekMonday() {
 
-                const today =
+                return getMonday(
+                    new Date()
+                );
+            }
+
+
+            // =================================================
+            // NEW:
+            // Check whether the picker is before the current
+            // month. Past months cannot be opened.
+            // =================================================
+
+            function isPastMonth(
+                year,
+                month
+            ) {
+
+                const now =
                     new Date();
 
                 return (
-                    pickerYear ===
-                        today.getFullYear()
+                    year <
+                        now.getFullYear()
+                    ||
+                    (
+                        year ===
+                        now.getFullYear()
+                        &&
+                        month <
+                        now.getMonth()
+                    )
+                );
+            }
+
+
+            // =================================================
+            // NEW:
+            // Check whether the picker is currently on the
+            // current month.
+            // =================================================
+
+            function isCurrentMonth(
+                year,
+                month
+            ) {
+
+                const now =
+                    new Date();
+
+                return (
+                    year ===
+                    now.getFullYear()
                     &&
-                    pickerMonth ===
-                        today.getMonth()
+                    month ===
+                    now.getMonth()
                 );
             }
 
@@ -970,25 +1041,17 @@ app_ui = ui.page_fluid(
                     "‹";
 
 
-                // ------------------------------------------------
-                // PREVIOUS MONTH
-                //
-                // The current month is the earliest month that
-                // can be displayed. Therefore the previous
-                // button is disabled there.
-                // ------------------------------------------------
+                // =================================================
+                // NEW:
+                // Disable the previous button when already on
+                // the current month.
+                // =================================================
 
-                if (isCurrentMonth()) {
-
-                    previousButton.disabled = true;
-
-                    previousButton.style.opacity =
-                        "0.35";
-
-                    previousButton.style.cursor =
-                        "not-allowed";
-
-                }
+                previousButton.disabled =
+                    isCurrentMonth(
+                        pickerYear,
+                        pickerMonth
+                    );
 
 
                 previousButton.onclick =
@@ -997,15 +1060,20 @@ app_ui = ui.page_fluid(
                         event.preventDefault();
                         event.stopPropagation();
 
-                        // ----------------------------------------
-                        // Never allow browsing before the current
-                        // month/year.
-                        // ----------------------------------------
 
-                        if (isCurrentMonth()) {
+                        // Never allow navigation into a
+                        // month before the current month.
+
+                        if (
+                            isCurrentMonth(
+                                pickerYear,
+                                pickerMonth
+                            )
+                        ) {
 
                             return;
                         }
+
 
                         pickerMonth--;
 
@@ -1016,36 +1084,28 @@ app_ui = ui.page_fluid(
                             pickerYear--;
                         }
 
-                        // Safety check: never move before the
-                        // current month/year.
 
-                        const today =
-                            new Date();
-
-                        const currentYear =
-                            today.getFullYear();
-
-                        const currentMonth =
-                            today.getMonth();
+                        // Safety check to guarantee that
+                        // the picker can never go backwards
+                        // beyond the current month.
 
                         if (
-                            pickerYear < currentYear
-                            ||
-                            (
-                                pickerYear ===
-                                    currentYear
-                                &&
-                                pickerMonth <
-                                    currentMonth
+                            isPastMonth(
+                                pickerYear,
+                                pickerMonth
                             )
                         ) {
 
+                            const now =
+                                new Date();
+
                             pickerYear =
-                                currentYear;
+                                now.getFullYear();
 
                             pickerMonth =
-                                currentMonth;
+                                now.getMonth();
                         }
+
 
                         renderWeekPicker(
                             input
@@ -1199,27 +1259,19 @@ app_ui = ui.page_fluid(
                 }
 
 
-                // ------------------------------------------------
-                // Current date / week.
+                // =================================================
+                // NEW:
+                // The current week's Monday is the earliest
+                // selectable date.
                 //
-                // Weeks before the current week are displayed
-                // normally for the current month, but cannot be
-                // selected.
-                // ------------------------------------------------
+                // For the current month, any week whose Monday
+                // is before the current week is skipped.
+                //
+                // For future months, all weeks remain available.
+                // =================================================
 
-                const today =
-                    new Date();
-
-                const currentISOWeek =
-                    getISOWeek(
-                        today
-                    );
-
-                const currentISOYear =
-                    (
-                        getMonday(today)
-                        .getFullYear()
-                    );
+                const currentWeekMonday =
+                    getCurrentWeekMonday();
 
 
                 while (
@@ -1231,6 +1283,31 @@ app_ui = ui.page_fluid(
                         pickerMonth
                     ) {
                         break;
+                    }
+
+
+                    // -------------------------------------------------
+                    // Skip all weeks before the current week.
+                    //
+                    // This applies only to the current month.
+                    // Future months are completely unchanged.
+                    // -------------------------------------------------
+
+                    if (
+                        isCurrentMonth(
+                            pickerYear,
+                            pickerMonth
+                        )
+                        &&
+                        monday <
+                        currentWeekMonday
+                    ) {
+
+                        monday.setDate(
+                            monday.getDate() + 7
+                        );
+
+                        continue;
                     }
 
 
@@ -1255,62 +1332,11 @@ app_ui = ui.page_fluid(
                         "Week " + week;
 
 
-                    // ------------------------------------------------
-                    // Determine whether this week is in the past.
-                    //
-                    // Only applies when displaying the current
-                    // month. Future months remain fully selectable.
-                    // ------------------------------------------------
-
-                    let weekIsPast = false;
-
-                    if (
-                        pickerYear ===
-                            today.getFullYear()
-                        &&
-                        pickerMonth ===
-                            today.getMonth()
-                    ) {
-
-                        if (
-                            week <
-                            currentISOWeek
-                        ) {
-
-                            weekIsPast = true;
-                        }
-                    }
-
-
-                    if (weekIsPast) {
-
-                        weekButton.disabled =
-                            true;
-
-                        weekButton.style.opacity =
-                            "0.35";
-
-                        weekButton.style.cursor =
-                            "not-allowed";
-
-                    }
-
-
                     weekButton.onclick =
                         function(event) {
 
                             event.preventDefault();
                             event.stopPropagation();
-
-                            // ------------------------------------
-                            // Do not allow a past week to be
-                            // selected.
-                            // ------------------------------------
-
-                            if (weekIsPast) {
-
-                                return;
-                            }
 
 
                             input.value =
@@ -1407,10 +1433,7 @@ app_ui = ui.page_fluid(
                     }
 
 
-                    // ------------------------------------------------
-                    // Every time the picker opens, reset it to the
-                    // current month/year.
-                    // ------------------------------------------------
+                    // Always open at the current month/year.
 
                     pickerYear =
                         new Date().getFullYear();
@@ -1449,7 +1472,6 @@ app_ui = ui.page_fluid(
 
                         weekPicker = null;
                     }
-
                 }
             );
 
@@ -2451,6 +2473,13 @@ def server(
         ]
 
 
+        # ----------------------------------------------------
+        # IMPORTANT:
+        # Inputs use RAW weeks, not normalized display weeks.
+        # Example: raw 53 -> input ID scenario_week_53,
+        # while the visible header says W1.
+        # ----------------------------------------------------
+
         for week in raw_weeks:
 
             quantity_cells.append(
@@ -2781,6 +2810,9 @@ def server(
 
             total = 0
 
+            # Keep RAW weeks here because these are the
+            # actual Shiny input IDs.
+
             for week in range(
                 min_week,
                 max_week + 1
@@ -2869,6 +2901,9 @@ def server(
 
             total = 0
 
+            # Use RAW week numbers because these are the
+            # actual Shiny input IDs.
+
             for raw_week in range(
                 min_week,
                 max_week + 1
@@ -2899,6 +2934,8 @@ def server(
 
                     continue
 
+
+            # Current RAW week
 
             try:
 
@@ -2939,6 +2976,15 @@ def server(
 
         return percentage
 
+
+    # --------------------------------------------------------
+    # Register a renderer for every RAW week that can occur
+    # in the CSV.
+    #
+    # This is important because the visible week can be
+    # normalized (e.g. raw 53 -> W1), but the Shiny input ID
+    # remains scenario_week_53.
+    # --------------------------------------------------------
 
     all_raw_weeks = sorted(
         {
@@ -2990,6 +3036,11 @@ def server(
 
                 return
 
+
+            # ------------------------------------------------
+            # ORD
+            # ------------------------------------------------
+
             ord_value = country.get(
                 "ord"
             )
@@ -3011,6 +3062,11 @@ def server(
             except Exception:
 
                 return
+
+
+            # ------------------------------------------------
+            # CURRENT VALUE
+            # ------------------------------------------------
 
             current_value = getattr(
                 input,
@@ -3034,6 +3090,10 @@ def server(
                 current_value
             )
 
+
+            # ------------------------------------------------
+            # OTHER WEEKS
+            # ------------------------------------------------
 
             other_total = 0
 
@@ -3103,6 +3163,27 @@ def server(
         return limit_week
 
 
+    # --------------------------------------------------------
+    # Register the limiter for every RAW week that can occur
+    # in the CSV.
+    #
+    # This is important because the visible week can be
+    # normalized (e.g. raw 53 -> W1), but the Shiny input ID
+    # remains scenario_week_53.
+    # --------------------------------------------------------
+
+    all_raw_weeks = sorted(
+        {
+            week
+            for _, country_row in country_df.iterrows()
+            for week in range(
+                int(country_row["min_week"]),
+                int(country_row["max_week"]) + 1
+            )
+        }
+    )
+
+
     for scenario in [
         "ideal",
         "acceptable"
@@ -3141,9 +3222,23 @@ def server(
             return
 
 
-        has_week_value = False
+        # ====================================================
+        # BUTTON VALIDATION
+        # ====================================================
+        # Both scenarios must contain:
+        # 1. At least one quantity in a week column.
+        # 2. A replenishment week value.
+        # ====================================================
 
-        has_replenishment_week = False
+        scenario_has_week_value = {
+            "ideal": False,
+            "acceptable": False
+        }
+
+        scenario_has_replenishment_week = {
+            "ideal": False,
+            "acceptable": False
+        }
 
 
         for scenario in [
@@ -3184,9 +3279,15 @@ def server(
                 if (
                     value is not None
                     and str(value).strip() != ""
+                    and str(value).strip().isdigit()
+                    and int(
+                        str(value).strip()
+                    ) > 0
                 ):
 
-                    has_week_value = True
+                    scenario_has_week_value[
+                        scenario
+                    ] = True
 
                     break
 
@@ -3210,10 +3311,12 @@ def server(
                 ).strip() != ""
             ):
 
-                has_replenishment_week = True
+                scenario_has_replenishment_week[
+                    scenario
+                ] = True
 
 
-        if not has_week_value:
+        if not scenario_has_week_value["ideal"]:
 
             status_type.set(
                 "error"
@@ -3221,24 +3324,57 @@ def server(
 
             status_message.set(
                 "Please enter at least one quantity "
-                "in a week column."
+                "for the IDEAL scenario."
             )
 
             return
 
 
-        if not has_replenishment_week:
+        if not scenario_has_week_value["acceptable"]:
 
             status_type.set(
                 "error"
             )
 
             status_message.set(
-                "Please enter a replenishment week."
+                "Please enter at least one quantity "
+                "for the ACCEPTABLE scenario."
             )
 
             return
 
+
+        if not scenario_has_replenishment_week["ideal"]:
+
+            status_type.set(
+                "error"
+            )
+
+            status_message.set(
+                "Please enter a replenishment week "
+                "for the IDEAL scenario."
+            )
+
+            return
+
+
+        if not scenario_has_replenishment_week["acceptable"]:
+
+            status_type.set(
+                "error"
+            )
+
+            status_message.set(
+                "Please enter a replenishment week "
+                "for the ACCEPTABLE scenario."
+            )
+
+            return
+
+
+        # ====================================================
+        # ORD
+        # ====================================================
 
         ord_value = country.get(
             "ord"
@@ -3258,6 +3394,10 @@ def server(
                 )
             )
 
+
+        # ====================================================
+        # BUILD SCENARIO DATA
+        # ====================================================
 
         all_output_rows = []
 
@@ -3286,6 +3426,10 @@ def server(
             total = 0
 
 
+            # =================================================
+            # REPLENISHMENT WEEK
+            # =================================================
+
             replenishment_week = ""
 
             try:
@@ -3307,6 +3451,10 @@ def server(
                 replenishment_week
             ).strip()
 
+
+            # =================================================
+            # READ RAW WEEK INPUTS
+            # =================================================
 
             for week in range(
                 min_week,
@@ -3349,6 +3497,7 @@ def server(
                 total += numeric_value
 
                 rows.append(
+
                     {
                         "week":
                             week,
@@ -3356,8 +3505,13 @@ def server(
                         "qty":
                             numeric_value
                     }
+
                 )
 
+
+            # =================================================
+            # ORD CHECK
+            # =================================================
 
             if (
                 ord_value is not None
@@ -3377,6 +3531,10 @@ def server(
                 return
 
 
+            # =================================================
+            # REQUIRE QUANTITY
+            # =================================================
+
             if total <= 0:
 
                 status_type.set(
@@ -3391,6 +3549,10 @@ def server(
                 return
 
 
+            # =================================================
+            # BUILD OUTPUT
+            # =================================================
+
             output_rows = []
 
 
@@ -3403,6 +3565,10 @@ def server(
                 qty = row[
                     "qty"
                 ]
+
+
+                # Display/output the REAL ISO week number,
+                # not the raw wrapped value.
 
                 display_week = normalize_week(
                     raw_week
@@ -3422,7 +3588,9 @@ def server(
 
 
                 output_rows.append(
+
                     {
+
                         "SCENARIO":
                             scenario_label,
 
@@ -3457,11 +3625,14 @@ def server(
                             replenishment_week
 
                     }
+
                 )
 
 
             scenario_df = pd.DataFrame(
+
                 output_rows,
+
                 columns=[
                     "SCENARIO",
                     "DST",
@@ -3471,6 +3642,7 @@ def server(
                     "percent",
                     "REPLENISHMENT_WEEK"
                 ]
+
             )
 
 
@@ -3485,6 +3657,10 @@ def server(
                 )
             )
 
+
+        # ====================================================
+        # ADDITIONAL NOTES
+        # ====================================================
 
         notes = ""
 
@@ -3505,6 +3681,10 @@ def server(
         ).strip()
 
 
+        # ====================================================
+        # EMAIL
+        # ====================================================
+
         subject = (
             "Delivery information - "
             f"{country['DESTINATION_NAME']}"
@@ -3512,7 +3692,9 @@ def server(
 
 
         combined_df = pd.DataFrame(
+
             all_output_rows,
+
             columns=[
                 "SCENARIO",
                 "DST",
@@ -3522,6 +3704,7 @@ def server(
                 "percent",
                 "REPLENISHMENT_WEEK"
             ]
+
         )
 
         combined_vector = create_r_vector(
@@ -3545,11 +3728,17 @@ def server(
         if notes:
 
             body_parts.extend(
+
                 [
+
                     "",
+
                     "Additional notes:",
+
                     notes
+
                 ]
+
             )
 
 
@@ -3560,6 +3749,10 @@ def server(
             + "\n"
         )
 
+
+        # ====================================================
+        # MICROSOFT 365 OUTLOOK URL
+        # ====================================================
 
         outlook_url = (
             "https://outlook.office.com/mail/deeplink/compose?"
@@ -3582,6 +3775,10 @@ def server(
         )
 
 
+        # ====================================================
+        # SEND URL TO BROWSER
+        # ====================================================
+
         await session.send_custom_message(
             "open_outlook",
             {
@@ -3590,6 +3787,10 @@ def server(
             }
         )
 
+
+        # ====================================================
+        # SUCCESS
+        # ====================================================
 
         status_type.set(
             "success"
@@ -3634,9 +3835,23 @@ def server(
             return
 
 
-        has_week_value = False
+        # ====================================================
+        # BUTTON VALIDATION
+        # ====================================================
+        # Both scenarios must contain:
+        # 1. At least one quantity in a week column.
+        # 2. A replenishment week value.
+        # ====================================================
 
-        has_replenishment_week = False
+        scenario_has_week_value = {
+            "ideal": False,
+            "acceptable": False
+        }
+
+        scenario_has_replenishment_week = {
+            "ideal": False,
+            "acceptable": False
+        }
 
 
         for scenario in [
@@ -3677,9 +3892,15 @@ def server(
                 if (
                     value is not None
                     and str(value).strip() != ""
+                    and str(value).strip().isdigit()
+                    and int(
+                        str(value).strip()
+                    ) > 0
                 ):
 
-                    has_week_value = True
+                    scenario_has_week_value[
+                        scenario
+                    ] = True
 
                     break
 
@@ -3703,15 +3924,27 @@ def server(
                 ).strip() != ""
             ):
 
-                has_replenishment_week = True
+                scenario_has_replenishment_week[
+                    scenario
+                ] = True
 
 
-        if not has_week_value:
+        if not scenario_has_week_value["ideal"]:
 
             return
 
 
-        if not has_replenishment_week:
+        if not scenario_has_week_value["acceptable"]:
+
+            return
+
+
+        if not scenario_has_replenishment_week["ideal"]:
+
+            return
+
+
+        if not scenario_has_replenishment_week["acceptable"]:
 
             return
 
@@ -3734,9 +3967,7 @@ def server(
                 )
             )
 
-
         all_output_rows = []
-
 
         for scenario, scenario_label in [
             ("ideal", "IDEAL"),
@@ -3780,7 +4011,6 @@ def server(
                 replenishment_week
             ).strip()
 
-
             for week in range(
                 min_week,
                 max_week + 1
@@ -3819,7 +4049,6 @@ def server(
                     }
                 )
 
-
             if (
                 ord_value is not None
                 and total > ord_value
@@ -3827,11 +4056,9 @@ def server(
 
                 return
 
-
             if total <= 0:
 
                 return
-
 
             for row in rows:
 
@@ -3847,18 +4074,15 @@ def server(
                     raw_week
                 )
 
-
                 if qty == 0:
 
                     continue
-
 
                 percentage = (
                     qty
                     / total
                     * 100
                 )
-
 
                 all_output_rows.append(
                     {
@@ -3897,7 +4121,6 @@ def server(
                     }
                 )
 
-
         table_df = pd.DataFrame(
             all_output_rows,
             columns=[
@@ -3910,7 +4133,6 @@ def server(
                 "REPLENISHMENT_WEEK"
             ]
         )
-
 
         yield table_df.to_csv(
             index=False,
