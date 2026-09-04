@@ -555,6 +555,229 @@ app_ui = ui.page_fluid(
         """),
 
         # ====================================================
+        # BUTTON ENABLE / DISABLE JAVASCRIPT
+        # ====================================================
+
+        ui.tags.script("""
+
+        (function() {
+
+            function hasAnyWeekValue() {
+
+                const weekInputs =
+                    document.querySelectorAll(
+                        "input[id^='ideal_week_'], " +
+                        "input[id^='acceptable_week_']"
+                    );
+
+                for (const input of weekInputs) {
+
+                    if (
+                        input.value &&
+                        input.value.trim() !== ""
+                    ) {
+
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+
+            function hasReplenishmentWeek() {
+
+                const replenishmentInputs =
+                    document.querySelectorAll(
+                        "input[id^='replenishment_week_']"
+                    );
+
+                for (const input of replenishmentInputs) {
+
+                    if (
+                        input.value &&
+                        input.value.trim() !== ""
+                    ) {
+
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+
+            function updateActionButtons() {
+
+                const sendButton =
+                    document.getElementById(
+                        "send"
+                    );
+
+                const downloadButton =
+                    document.getElementById(
+                        "download_table"
+                    );
+
+                if (
+                    !sendButton &&
+                    !downloadButton
+                ) {
+
+                    return;
+                }
+
+
+                const enabled =
+                    hasAnyWeekValue() &&
+                    hasReplenishmentWeek();
+
+
+                if (sendButton) {
+
+                    sendButton.disabled =
+                        !enabled;
+
+                    if (enabled) {
+
+                        sendButton.classList.remove(
+                            "button-blocked"
+                        );
+
+                    }
+
+                    else {
+
+                        sendButton.classList.add(
+                            "button-blocked"
+                        );
+                    }
+                }
+
+
+                if (downloadButton) {
+
+                    downloadButton.disabled =
+                        !enabled;
+
+                    if (enabled) {
+
+                        downloadButton.classList.remove(
+                            "button-blocked"
+                        );
+
+                    }
+
+                    else {
+
+                        downloadButton.classList.add(
+                            "button-blocked"
+                        );
+                    }
+                }
+            }
+
+
+            document.addEventListener(
+                "input",
+                function(event) {
+
+                    if (
+                        event.target.matches(
+                            "input[id^='ideal_week_'], " +
+                            "input[id^='acceptable_week_'], " +
+                            "input[id^='replenishment_week_']"
+                        )
+                    ) {
+
+                        updateActionButtons();
+                    }
+                }
+            );
+
+
+            document.addEventListener(
+                "change",
+                function(event) {
+
+                    if (
+                        event.target.matches(
+                            "input[id^='ideal_week_'], " +
+                            "input[id^='acceptable_week_'], " +
+                            "input[id^='replenishment_week_']"
+                        )
+                    ) {
+
+                        updateActionButtons();
+                    }
+                }
+            );
+
+
+            const observer =
+                new MutationObserver(
+                    function() {
+
+                        updateActionButtons();
+                    }
+                );
+
+
+            observer.observe(
+                document.body,
+                {
+                    childList: true,
+                    subtree: true
+                }
+            );
+
+
+            document.addEventListener(
+                "click",
+                function(event) {
+
+                    const button =
+                        event.target.closest(
+                            "#send, #download_table"
+                        );
+
+                    if (!button) {
+
+                        return;
+                    }
+
+
+                    if (button.disabled) {
+
+                        event.preventDefault();
+                        event.stopPropagation();
+
+                        return false;
+                    }
+                },
+                true
+            );
+
+
+            document.addEventListener(
+                "DOMContentLoaded",
+                function() {
+
+                    updateActionButtons();
+                }
+            );
+
+
+            setTimeout(
+                updateActionButtons,
+                100
+            );
+
+        })();
+
+        """),
+
+        # ====================================================
         # WEEK PICKER JAVASCRIPT
         # ====================================================
 
@@ -1341,6 +1564,30 @@ app_ui = ui.page_fluid(
             width: 100%;
         }
 
+        /* ====================================================
+           BLOCKED SEND / DOWNLOAD BUTTONS
+           ==================================================== */
+
+        #send:disabled,
+        #download_table:disabled,
+        .button-blocked {
+            background-color: #bdbdbd !important;
+            border-color: #bdbdbd !important;
+            color: #eeeeee !important;
+            cursor: not-allowed !important;
+            opacity: 1 !important;
+            box-shadow: none !important;
+        }
+
+        #send:disabled:hover,
+        #download_table:disabled:hover,
+        .button-blocked:hover {
+            background-color: #bdbdbd !important;
+            border-color: #bdbdbd !important;
+            color: #eeeeee !important;
+            cursor: not-allowed !important;
+        }
+
         .notes-container {
             margin-top: 30px;
         }
@@ -1453,6 +1700,7 @@ app_ui = ui.page_fluid(
         }
 
         """)
+
     ),
 
     ui.div(
@@ -2776,6 +3024,116 @@ def server(
 
 
         # ====================================================
+        # BUTTON VALIDATION
+        # ====================================================
+        # Keep server-side protection in addition to the
+        # visual/button disabling in JavaScript.
+        #
+        # The button requires:
+        # 1. At least one quantity in any week column.
+        # 2. At least one replenishment week value.
+        # ====================================================
+
+        has_week_value = False
+
+        has_replenishment_week = False
+
+
+        for scenario in [
+            "ideal",
+            "acceptable"
+        ]:
+
+            min_week = int(
+                country[
+                    "min_week"
+                ]
+            )
+
+            max_week = int(
+                country[
+                    "max_week"
+                ]
+            )
+
+
+            for week in range(
+                min_week,
+                max_week + 1
+            ):
+
+                try:
+
+                    value = getattr(
+                        input,
+                        f"{scenario}_week_{week}"
+                    )()
+
+                except Exception:
+
+                    value = ""
+
+
+                if (
+                    value is not None
+                    and str(value).strip() != ""
+                ):
+
+                    has_week_value = True
+
+                    break
+
+
+            try:
+
+                replenishment_value = getattr(
+                    input,
+                    f"replenishment_week_{scenario}"
+                )()
+
+            except Exception:
+
+                replenishment_value = ""
+
+
+            if (
+                replenishment_value is not None
+                and str(
+                    replenishment_value
+                ).strip() != ""
+            ):
+
+                has_replenishment_week = True
+
+
+        if not has_week_value:
+
+            status_type.set(
+                "error"
+            )
+
+            status_message.set(
+                "Please enter at least one quantity "
+                "in a week column."
+            )
+
+            return
+
+
+        if not has_replenishment_week:
+
+            status_type.set(
+                "error"
+            )
+
+            status_message.set(
+                "Please enter a replenishment week."
+            )
+
+            return
+
+
+        # ====================================================
         # ORD
         # ====================================================
 
@@ -3220,7 +3578,14 @@ def server(
     # ========================================================
 
     @render.download(
-        filename="delivery_information.csv"
+        filename=lambda:
+            (
+                f"{date.today().isoformat()}_"
+                f"{str(current_country()['DESTINATION_NAME'])}_"
+                f"delivery_plan.csv"
+            )
+            if current_country() is not None
+            else "delivery_plan.csv"
     )
     def download_table():
 
@@ -3229,6 +3594,95 @@ def server(
         if country is None:
 
             return
+
+
+        # ====================================================
+        # BUTTON VALIDATION
+        # ====================================================
+        # Keep the same protection as the Send button.
+        # ====================================================
+
+        has_week_value = False
+
+        has_replenishment_week = False
+
+
+        for scenario in [
+            "ideal",
+            "acceptable"
+        ]:
+
+            min_week = int(
+                country[
+                    "min_week"
+                ]
+            )
+
+            max_week = int(
+                country[
+                    "max_week"
+                ]
+            )
+
+
+            for week in range(
+                min_week,
+                max_week + 1
+            ):
+
+                try:
+
+                    value = getattr(
+                        input,
+                        f"{scenario}_week_{week}"
+                    )()
+
+                except Exception:
+
+                    value = ""
+
+
+                if (
+                    value is not None
+                    and str(value).strip() != ""
+                ):
+
+                    has_week_value = True
+
+                    break
+
+
+            try:
+
+                replenishment_value = getattr(
+                    input,
+                    f"replenishment_week_{scenario}"
+                )()
+
+            except Exception:
+
+                replenishment_value = ""
+
+
+            if (
+                replenishment_value is not None
+                and str(
+                    replenishment_value
+                ).strip() != ""
+            ):
+
+                has_replenishment_week = True
+
+
+        if not has_week_value:
+
+            return
+
+
+        if not has_replenishment_week:
+
+            return
+
 
         ord_value = country.get(
             "ord"
