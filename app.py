@@ -2,7 +2,6 @@ from shiny import App, ui, render, reactive, Inputs, Outputs, Session
 import pandas as pd
 import re
 from urllib.parse import quote
-from datetime import date, timedelta
 
 
 # ============================================================
@@ -1341,6 +1340,24 @@ app_ui = ui.page_fluid(
             width: 100%;
         }
 
+        #send {
+            background-color: #0041c2 !important;
+            border-color: #0041c2 !important;
+            color: white !important;
+        }
+
+        #send:hover {
+            background-color: #0037a8 !important;
+            border-color: #0037a8 !important;
+        }
+
+        .download-warning {
+            margin-top: 5px;
+            color: #dc3545;
+            font-size: 11px;
+            text-align: right;
+        }
+
         .notes-container {
             margin-top: 30px;
         }
@@ -1533,6 +1550,10 @@ def server(
         None
     )
 
+    download_warning_state = reactive.Value(
+        False
+    )
+
 
     # ========================================================
     # START INPUT
@@ -1558,6 +1579,10 @@ def server(
 
         status_message.set(
             None
+        )
+
+        download_warning_state.set(
+            False
         )
 
         try:
@@ -2324,6 +2349,10 @@ def server(
                     "download table"
                 )
 
+            ),
+
+            ui.output_ui(
+                "output_download_warning"
             )
 
         )
@@ -2969,7 +2998,6 @@ def server(
                     "qty"
                 ]
 
-
                 # Display/output the REAL ISO week number,
                 # not the raw wrapped value.
 
@@ -3114,7 +3142,6 @@ def server(
             combined_df
         )
 
-
         body_parts = [
 
             "Please see below the delivery information",
@@ -3215,6 +3242,23 @@ def server(
         )
 
 
+    @output
+    @render.ui
+    def output_download_warning():
+
+        if not download_warning_state():
+
+            return ui.div()
+
+        return ui.div(
+            {
+                "class":
+                    "download-warning"
+            },
+            "there is no data in both tables, please introduce information in the tables"
+        )
+
+
     # ========================================================
     # DOWNLOAD TABLE
     # ========================================================
@@ -3228,7 +3272,15 @@ def server(
 
         if country is None:
 
+            download_warning_state.set(
+                True
+            )
+
             return
+
+        download_warning_state.set(
+            False
+        )
 
         ord_value = country.get(
             "ord"
@@ -3402,6 +3454,18 @@ def server(
                     }
                 )
 
+        if not all_output_rows:
+
+            download_warning_state.set(
+                True
+            )
+
+            return
+
+        download_warning_state.set(
+            False
+        )
+
         table_df = pd.DataFrame(
             all_output_rows,
             columns=[
@@ -3419,7 +3483,6 @@ def server(
             index=False,
             sep=";"
         )
-
 
     # ========================================================
     # STATUS
@@ -3440,6 +3503,7 @@ def server(
         if status_type() == "success":
 
             return ui.div(
+
                 {
                     "class":
                         "success-box"
@@ -3452,6 +3516,7 @@ def server(
             )
 
         return ui.div(
+
             {
                 "class":
                     "error-box"
