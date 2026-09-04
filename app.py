@@ -549,6 +549,106 @@ app_ui = ui.page_fluid(
                 }
             );
 
+
+            // ====================================================
+            // DISABLE DOWNLOAD BUTTON UNTIL REQUIRED DATA EXISTS
+            // ====================================================
+
+            let downloadButtonEnabled = false;
+
+            function updateDownloadButton() {
+
+                const button =
+                    document.getElementById(
+                        "download_table"
+                    );
+
+                if (!button) {
+                    return;
+                }
+
+                button.disabled =
+                    !downloadButtonEnabled;
+
+                button.classList.toggle(
+                    "disabled",
+                    !downloadButtonEnabled
+                );
+
+                button.setAttribute(
+                    "aria-disabled",
+                    String(!downloadButtonEnabled)
+                );
+
+                if (!downloadButtonEnabled) {
+
+                    button.setAttribute(
+                        "tabindex",
+                        "-1"
+                    );
+
+                    button.style.pointerEvents =
+                        "none";
+
+                }
+
+                else {
+
+                    button.removeAttribute(
+                        "tabindex"
+                    );
+
+                    button.style.pointerEvents =
+                        "";
+
+                }
+
+            }
+
+
+            Shiny.addCustomMessageHandler(
+                "set_download_button_enabled",
+                function(message) {
+
+                    downloadButtonEnabled =
+                        Boolean(
+                            message.enabled
+                        );
+
+                    updateDownloadButton();
+
+                }
+            );
+
+
+            const downloadButtonObserver =
+                new MutationObserver(
+                    function() {
+
+                        updateDownloadButton();
+
+                    }
+                );
+
+
+            downloadButtonObserver.observe(
+                document.body,
+                {
+                    childList: true,
+                    subtree: true
+                }
+            );
+
+
+            document.addEventListener(
+                "DOMContentLoaded",
+                function() {
+
+                    updateDownloadButton();
+
+                }
+            );
+
         })();
 
         """),
@@ -1349,6 +1449,17 @@ app_ui = ui.page_fluid(
         #send:hover {
             background-color: #0037a8 !important;
             border-color: #0037a8 !important;
+        }
+
+        #send:disabled,
+        #send:disabled:hover,
+        #download_table.disabled,
+        #download_table.disabled:hover {
+            background-color: #6c757d !important;
+            border-color: #6c757d !important;
+            color: white !important;
+            opacity: 0.65;
+            cursor: not-allowed !important;
         }
 
         .download-warning {
@@ -2341,12 +2452,14 @@ def server(
 
                 ui.input_action_button(
                     "send",
-                    "Send"
+                    "Send",
+                    disabled=True
                 ),
 
                 ui.download_button(
                     "download_table",
-                    "download table"
+                    "download table",
+                    disabled=True
                 )
 
             ),
@@ -2777,6 +2890,117 @@ def server(
                 scenario,
                 week
             )
+
+
+    # ========================================================
+    # ENABLE SEND / DOWNLOAD ONLY WHEN REQUIRED DATA EXISTS
+    # ========================================================
+
+    def buttons_have_required_data():
+
+        country = current_country()
+
+        if country is None:
+            return False
+
+        # Both replenishment-week fields must contain a value.
+        for scenario in [
+            "ideal",
+            "acceptable"
+        ]:
+
+            try:
+                replenishment_week = getattr(
+                    input,
+                    f"replenishment_week_{scenario}"
+                )()
+
+            except Exception:
+                return False
+
+            if (
+                replenishment_week is None
+                or not str(
+                    replenishment_week
+                ).strip()
+            ):
+                return False
+
+
+        # At least one positive quantity must exist in
+        # any of the week cells in either table.
+        min_week = int(
+            country[
+                "min_week"
+            ]
+        )
+
+        max_week = int(
+            country[
+                "max_week"
+            ]
+        )
+
+        for scenario in [
+            "ideal",
+            "acceptable"
+        ]:
+
+            for week in range(
+                min_week,
+                max_week + 1
+            ):
+
+                try:
+                    value = getattr(
+                        input,
+                        f"{scenario}_week_{week}"
+                    )()
+
+                except Exception:
+                    value = ""
+
+                if value is None:
+                    continue
+
+                value = str(
+                    value
+                ).strip()
+
+                if not value:
+                    continue
+
+                try:
+                    if float(value) > 0:
+                        return True
+
+                except Exception:
+                    continue
+
+        return False
+
+
+    @reactive.effect
+    def update_submission_buttons():
+
+        buttons_enabled = buttons_have_required_data()
+
+        ui.update_action_button(
+            "send",
+            disabled=not buttons_enabled
+        )
+
+        try:
+            session.send_custom_message(
+                "set_download_button_enabled",
+                {
+                    "enabled":
+                        buttons_enabled
+                }
+            )
+
+        except Exception:
+            pass
 
 
     # ========================================================
