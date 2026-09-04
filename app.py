@@ -879,15 +879,16 @@ app_ui = ui.page_fluid(
                     d.getDate() + difference
                 );
 
+                d.setHours(
+                    0,
+                    0,
+                    0,
+                    0
+                );
+
                 return d;
             }
 
-
-            // =================================================
-            // NEW:
-            // Return the Monday of the current ISO week.
-            // This is the earliest week the user can select.
-            // =================================================
 
             function getCurrentWeekMonday() {
 
@@ -897,54 +898,42 @@ app_ui = ui.page_fluid(
             }
 
 
-            // =================================================
-            // NEW:
-            // Check whether the picker is before the current
-            // month. Past months cannot be opened.
-            // =================================================
-
-            function isPastMonth(
-                year,
-                month
-            ) {
+            function isBeforeCurrentMonth() {
 
                 const now =
                     new Date();
 
-                return (
-                    year <
-                        now.getFullYear()
-                    ||
-                    (
-                        year ===
-                        now.getFullYear()
-                        &&
-                        month <
-                        now.getMonth()
-                    )
-                );
+                if (
+                    pickerYear <
+                    now.getFullYear()
+                ) {
+
+                    return true;
+                }
+
+                if (
+                    pickerYear ===
+                    now.getFullYear() &&
+                    pickerMonth <
+                    now.getMonth()
+                ) {
+
+                    return true;
+                }
+
+                return false;
             }
 
 
-            // =================================================
-            // NEW:
-            // Check whether the picker is currently on the
-            // current month.
-            // =================================================
-
-            function isCurrentMonth(
-                year,
-                month
-            ) {
+            function isCurrentMonth() {
 
                 const now =
                     new Date();
 
                 return (
-                    year ===
-                    now.getFullYear()
-                    &&
-                    month ===
+                    pickerYear ===
+                    now.getFullYear() &&
+                    pickerMonth ===
                     now.getMonth()
                 );
             }
@@ -1041,17 +1030,13 @@ app_ui = ui.page_fluid(
                     "‹";
 
 
-                // =================================================
-                // NEW:
-                // Disable the previous button when already on
-                // the current month.
-                // =================================================
+                /*
+                 * Do not allow browsing to a month before
+                 * the current month.
+                 */
 
                 previousButton.disabled =
-                    isCurrentMonth(
-                        pickerYear,
-                        pickerMonth
-                    );
+                    isCurrentMonth();
 
 
                 previousButton.onclick =
@@ -1060,20 +1045,12 @@ app_ui = ui.page_fluid(
                         event.preventDefault();
                         event.stopPropagation();
 
-
-                        // Never allow navigation into a
-                        // month before the current month.
-
                         if (
-                            isCurrentMonth(
-                                pickerYear,
-                                pickerMonth
-                            )
+                            isCurrentMonth()
                         ) {
 
                             return;
                         }
-
 
                         pickerMonth--;
 
@@ -1084,16 +1061,13 @@ app_ui = ui.page_fluid(
                             pickerYear--;
                         }
 
-
-                        // Safety check to guarantee that
-                        // the picker can never go backwards
-                        // beyond the current month.
+                        /*
+                         * Safety check so the picker can never
+                         * move before the current month.
+                         */
 
                         if (
-                            isPastMonth(
-                                pickerYear,
-                                pickerMonth
-                            )
+                            isBeforeCurrentMonth()
                         ) {
 
                             const now =
@@ -1105,7 +1079,6 @@ app_ui = ui.page_fluid(
                             pickerMonth =
                                 now.getMonth();
                         }
-
 
                         renderWeekPicker(
                             input
@@ -1242,151 +1215,159 @@ app_ui = ui.page_fluid(
                     );
 
 
+                const currentWeekMonday =
+                    getCurrentWeekMonday();
+
+
                 let monday =
                     getMonday(
                         firstDay
                     );
 
 
+                /*
+                 * Keep the existing display of weeks, except
+                 * that the current ISO week is allowed to appear
+                 * even when its Monday falls in the previous
+                 * calendar month.
+                 */
+
                 if (
                     monday.getMonth() !==
                     pickerMonth
                 ) {
 
-                    monday.setDate(
-                        monday.getDate() + 7
-                    );
+                    if (
+                        !(
+                            isCurrentMonth() &&
+                            monday.getTime() ===
+                            currentWeekMonday.getTime()
+                        )
+                    ) {
+
+                        monday.setDate(
+                            monday.getDate() + 7
+                        );
+                    }
                 }
-
-
-                // =================================================
-                // NEW:
-                // The current week's Monday is the earliest
-                // selectable date.
-                //
-                // For the current month, any week whose Monday
-                // is before the current week is skipped.
-                //
-                // For future months, all weeks remain available.
-                // =================================================
-
-                const currentWeekMonday =
-                    getCurrentWeekMonday();
 
 
                 while (
                     monday <= lastDay
                 ) {
 
+                    /*
+                     * Keep the current week if it started in the
+                     * previous month. For all other weeks,
+                     * preserve the original month filtering.
+                     */
+
+                    const isCurrentWeek =
+                        monday.getTime() ===
+                        currentWeekMonday.getTime();
+
+
                     if (
                         monday.getMonth() !==
-                        pickerMonth
+                        pickerMonth &&
+                        !(
+                            isCurrentMonth() &&
+                            isCurrentWeek
+                        )
                     ) {
+
                         break;
                     }
 
 
-                    // -------------------------------------------------
-                    // Skip all weeks before the current week.
-                    //
-                    // This applies only to the current month.
-                    // Future months are completely unchanged.
-                    // -------------------------------------------------
+                    /*
+                     * This is the actual restriction:
+                     * never display a week before today's
+                     * ISO week.
+                     */
 
                     if (
-                        isCurrentMonth(
-                            pickerYear,
-                            pickerMonth
-                        )
-                        &&
-                        monday <
+                        monday >=
                         currentWeekMonday
                     ) {
 
-                        monday.setDate(
-                            monday.getDate() + 7
-                        );
-
-                        continue;
-                    }
+                        const week =
+                            getISOWeek(
+                                monday
+                            );
 
 
-                    const week =
-                        getISOWeek(
-                            monday
-                        );
+                        const weekButton =
+                            document.createElement(
+                                "button"
+                            );
+
+                        weekButton.type =
+                            "button";
+
+                        weekButton.className =
+                            "week-picker-week";
+
+                        weekButton.innerText =
+                            "Week " + week;
 
 
-                    const weekButton =
-                        document.createElement(
-                            "button"
-                        );
+                        weekButton.onclick =
+                            function(event) {
 
-                    weekButton.type =
-                        "button";
-
-                    weekButton.className =
-                        "week-picker-week";
-
-                    weekButton.innerText =
-                        "Week " + week;
+                                event.preventDefault();
+                                event.stopPropagation();
 
 
-                    weekButton.onclick =
-                        function(event) {
+                                input.value =
+                                    String(
+                                        week
+                                    );
 
-                            event.preventDefault();
-                            event.stopPropagation();
 
-
-                            input.value =
-                                String(
-                                    week
+                                input.dispatchEvent(
+                                    new Event(
+                                        "input",
+                                        {
+                                            bubbles: true
+                                        }
+                                    )
                                 );
 
 
-                            input.dispatchEvent(
-                                new Event(
-                                    "input",
+                                input.dispatchEvent(
+                                    new Event(
+                                        "change",
+                                        {
+                                            bubbles: true
+                                        }
+                                    )
+                                );
+
+
+                                Shiny.setInputValue(
+                                    input.id,
+                                    String(week),
                                     {
-                                        bubbles: true
+                                        priority:
+                                            "event"
                                     }
-                                )
-                            );
+                                );
 
 
-                            input.dispatchEvent(
-                                new Event(
-                                    "change",
-                                    {
-                                        bubbles: true
-                                    }
-                                )
-                            );
+                                if (weekPicker) {
 
+                                    weekPicker.remove();
 
-                            Shiny.setInputValue(
-                                input.id,
-                                String(week),
-                                {
-                                    priority:
-                                        "event"
+                                    weekPicker = null;
                                 }
-                            );
+                            };
 
 
-                            if (weekPicker) {
-
-                                weekPicker.remove();
-
-                                weekPicker = null;
-                            }
-                        };
-
-
-                    weeksContainer.appendChild(
-                        weekButton
-                    );
+                        weeksContainer.appendChild(
+                            weekButton
+                        );
+                    }
 
 
                     monday.setDate(
@@ -1432,8 +1413,6 @@ app_ui = ui.page_fluid(
                         return;
                     }
 
-
-                    // Always open at the current month/year.
 
                     pickerYear =
                         new Date().getFullYear();
@@ -2400,6 +2379,7 @@ def server(
                         "class":
                             "month-header"
                     }
+
                 )
 
             )
