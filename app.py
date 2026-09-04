@@ -3479,7 +3479,7 @@ def server(
 
             "",
 
-            "IDEAL scenario:",
+            "Delivery plan information:",
 
             combined_vector
 
