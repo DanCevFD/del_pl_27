@@ -1700,7 +1700,6 @@ app_ui = ui.page_fluid(
         }
 
         """)
-
     ),
 
     ui.div(
@@ -1726,7 +1725,14 @@ app_ui = ui.page_fluid(
             },
 
             "Select a destination and enter the "
-            "delivery quantities for each week."
+            "delivery quantities for each week. ",
+
+            ui.a(
+                "(tutorial)",
+                href="https://github.com/DanCevFD/del_pl_27/raw/refs/heads/main/test_app_1.mp4",
+                target="_blank",
+                rel="noopener noreferrer"
+            )
         ),
 
         ui.input_action_button(
