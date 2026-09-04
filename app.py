@@ -2,6 +2,7 @@ from shiny import App, ui, render, reactive, Inputs, Outputs, Session
 import pandas as pd
 import re
 from urllib.parse import quote
+from datetime import date, timedelta
 
 
 # ============================================================
@@ -1334,7 +1335,10 @@ app_ui = ui.page_fluid(
 
         .send-controls {
             margin-top: 25px;
-            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
         }
 
         .notes-container {
@@ -2313,6 +2317,11 @@ def server(
                 ui.input_action_button(
                     "send",
                     "Send"
+                ),
+
+                ui.download_button(
+                    "download_table",
+                    "download table"
                 )
 
             )
@@ -2960,6 +2969,7 @@ def server(
                     "qty"
                 ]
 
+
                 # Display/output the REAL ISO week number,
                 # not the raw wrapped value.
 
@@ -3084,6 +3094,27 @@ def server(
         )
 
 
+        combined_df = pd.DataFrame(
+
+            all_output_rows,
+
+            columns=[
+                "SCENARIO",
+                "DST",
+                "DESTINATION",
+                "WEEK",
+                "qty",
+                "percent",
+                "REPLENISHMENT_WEEK"
+            ]
+
+        )
+
+        combined_vector = create_r_vector(
+            combined_df
+        )
+
+
         body_parts = [
 
             "Please see below the delivery information",
@@ -3092,13 +3123,7 @@ def server(
 
             "IDEAL scenario:",
 
-            scenario_vectors[0],
-
-            "",
-
-            "ACCEPTABLE scenario:",
-
-            scenario_vectors[1]
+            combined_vector
 
         ]
 
@@ -3191,6 +3216,212 @@ def server(
 
 
     # ========================================================
+    # DOWNLOAD TABLE
+    # ========================================================
+
+    @render.download(
+        filename="delivery_information.csv"
+    )
+    def download_table():
+
+        country = current_country()
+
+        if country is None:
+
+            return
+
+        ord_value = country.get(
+            "ord"
+        )
+
+        if pd.isna(
+            ord_value
+        ):
+
+            ord_value = None
+
+        else:
+
+            ord_value = int(
+                float(
+                    ord_value
+                )
+            )
+
+        all_output_rows = []
+
+        for scenario, scenario_label in [
+            ("ideal", "IDEAL"),
+            ("acceptable", "ACCEPTABLE")
+        ]:
+
+            min_week = int(
+                country[
+                    "min_week"
+                ]
+            )
+
+            max_week = int(
+                country[
+                    "max_week"
+                ]
+            )
+
+            rows = []
+
+            total = 0
+
+            replenishment_week = ""
+
+            try:
+
+                replenishment_week = getattr(
+                    input,
+                    f"replenishment_week_{scenario}"
+                )()
+
+            except Exception:
+
+                replenishment_week = ""
+
+            if replenishment_week is None:
+
+                replenishment_week = ""
+
+            replenishment_week = str(
+                replenishment_week
+            ).strip()
+
+            for week in range(
+                min_week,
+                max_week + 1
+            ):
+
+                value = getattr(
+                    input,
+                    f"{scenario}_week_{week}"
+                )()
+
+                if not value:
+
+                    value = "0"
+
+                value = str(
+                    value
+                ).strip()
+
+                if not value.isdigit():
+
+                    return
+
+                numeric_value = int(
+                    value
+                )
+
+                total += numeric_value
+
+                rows.append(
+                    {
+                        "week":
+                            week,
+
+                        "qty":
+                            numeric_value
+                    }
+                )
+
+            if (
+                ord_value is not None
+                and total > ord_value
+            ):
+
+                return
+
+            if total <= 0:
+
+                return
+
+            for row in rows:
+
+                raw_week = row[
+                    "week"
+                ]
+
+                qty = row[
+                    "qty"
+                ]
+
+                display_week = normalize_week(
+                    raw_week
+                )
+
+                if qty == 0:
+
+                    continue
+
+                percentage = (
+                    qty
+                    / total
+                    * 100
+                )
+
+                all_output_rows.append(
+                    {
+                        "SCENARIO":
+                            scenario_label,
+
+                        "DST":
+                            str(
+                                country[
+                                    "DST"
+                                ]
+                            ),
+
+                        "DESTINATION":
+                            str(
+                                country[
+                                    "DESTINATION_NAME"
+                                ]
+                            ),
+
+                        "WEEK":
+                            int(
+                                display_week
+                            ),
+
+                        "qty":
+                            int(
+                                qty
+                            ),
+
+                        "percent":
+                            f"{percentage:.0f}%",
+
+                        "REPLENISHMENT_WEEK":
+                            replenishment_week
+                    }
+                )
+
+        table_df = pd.DataFrame(
+            all_output_rows,
+            columns=[
+                "SCENARIO",
+                "DST",
+                "DESTINATION",
+                "WEEK",
+                "qty",
+                "percent",
+                "REPLENISHMENT_WEEK"
+            ]
+        )
+
+        yield table_df.to_csv(
+            index=False,
+            sep=";"
+        )
+
+
+    # ========================================================
     # STATUS
     # ========================================================
 
@@ -3209,7 +3440,6 @@ def server(
         if status_type() == "success":
 
             return ui.div(
-
                 {
                     "class":
                         "success-box"
@@ -3222,7 +3452,6 @@ def server(
             )
 
         return ui.div(
-
             {
                 "class":
                     "error-box"
