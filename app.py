@@ -562,19 +562,30 @@ app_ui = ui.page_fluid(
 
         (function() {
 
-            function hasAnyWeekValue() {
+            function hasScenarioWeekValue(
+                scenario
+            ) {
 
                 const weekInputs =
                     document.querySelectorAll(
-                        "input[id^='ideal_week_'], " +
-                        "input[id^='acceptable_week_']"
+                        "input[id^='" +
+                        scenario +
+                        "_week_']"
                     );
 
                 for (const input of weekInputs) {
 
                     if (
                         input.value &&
-                        input.value.trim() !== ""
+                        input.value.trim() !== "" &&
+                        !isNaN(
+                            Number(
+                                input.value.trim()
+                            )
+                        ) &&
+                        Number(
+                            input.value.trim()
+                        ) > 0
                     ) {
 
                         return true;
@@ -585,25 +596,25 @@ app_ui = ui.page_fluid(
             }
 
 
-            function hasReplenishmentWeek() {
+            function hasScenarioReplenishmentWeek(
+                scenario
+            ) {
 
-                const replenishmentInputs =
-                    document.querySelectorAll(
-                        "input[id^='replenishment_week_']"
+                const replenishmentInput =
+                    document.getElementById(
+                        "replenishment_week_" +
+                        scenario
                     );
 
-                for (const input of replenishmentInputs) {
+                if (!replenishmentInput) {
 
-                    if (
-                        input.value &&
-                        input.value.trim() !== ""
-                    ) {
-
-                        return true;
-                    }
+                    return false;
                 }
 
-                return false;
+                return (
+                    replenishmentInput.value &&
+                    replenishmentInput.value.trim() !== ""
+                );
             }
 
 
@@ -628,9 +639,27 @@ app_ui = ui.page_fluid(
                 }
 
 
+                const idealHasData =
+                    hasScenarioWeekValue(
+                        "ideal"
+                    ) &&
+                    hasScenarioReplenishmentWeek(
+                        "ideal"
+                    );
+
+
+                const acceptableHasData =
+                    hasScenarioWeekValue(
+                        "acceptable"
+                    ) &&
+                    hasScenarioReplenishmentWeek(
+                        "acceptable"
+                    );
+
+
                 const enabled =
-                    hasAnyWeekValue() &&
-                    hasReplenishmentWeek();
+                    idealHasData &&
+                    acceptableHasData;
 
 
                 if (sendButton) {
@@ -3036,17 +3065,20 @@ def server(
         # ====================================================
         # BUTTON VALIDATION
         # ====================================================
-        # Keep server-side protection in addition to the
-        # visual/button disabling in JavaScript.
-        #
-        # The button requires:
-        # 1. At least one quantity in any week column.
-        # 2. At least one replenishment week value.
+        # Both scenarios must contain:
+        # 1. At least one quantity in a week column.
+        # 2. A replenishment week value.
         # ====================================================
 
-        has_week_value = False
+        scenario_has_week_value = {
+            "ideal": False,
+            "acceptable": False
+        }
 
-        has_replenishment_week = False
+        scenario_has_replenishment_week = {
+            "ideal": False,
+            "acceptable": False
+        }
 
 
         for scenario in [
@@ -3087,9 +3119,15 @@ def server(
                 if (
                     value is not None
                     and str(value).strip() != ""
+                    and str(value).strip().isdigit()
+                    and int(
+                        str(value).strip()
+                    ) > 0
                 ):
 
-                    has_week_value = True
+                    scenario_has_week_value[
+                        scenario
+                    ] = True
 
                     break
 
@@ -3113,10 +3151,12 @@ def server(
                 ).strip() != ""
             ):
 
-                has_replenishment_week = True
+                scenario_has_replenishment_week[
+                    scenario
+                ] = True
 
 
-        if not has_week_value:
+        if not scenario_has_week_value["ideal"]:
 
             status_type.set(
                 "error"
@@ -3124,20 +3164,49 @@ def server(
 
             status_message.set(
                 "Please enter at least one quantity "
-                "in a week column."
+                "for the IDEAL scenario."
             )
 
             return
 
 
-        if not has_replenishment_week:
+        if not scenario_has_week_value["acceptable"]:
 
             status_type.set(
                 "error"
             )
 
             status_message.set(
-                "Please enter a replenishment week."
+                "Please enter at least one quantity "
+                "for the ACCEPTABLE scenario."
+            )
+
+            return
+
+
+        if not scenario_has_replenishment_week["ideal"]:
+
+            status_type.set(
+                "error"
+            )
+
+            status_message.set(
+                "Please enter a replenishment week "
+                "for the IDEAL scenario."
+            )
+
+            return
+
+
+        if not scenario_has_replenishment_week["acceptable"]:
+
+            status_type.set(
+                "error"
+            )
+
+            status_message.set(
+                "Please enter a replenishment week "
+                "for the ACCEPTABLE scenario."
             )
 
             return
@@ -3609,12 +3678,20 @@ def server(
         # ====================================================
         # BUTTON VALIDATION
         # ====================================================
-        # Keep the same protection as the Send button.
+        # Both scenarios must contain:
+        # 1. At least one quantity in a week column.
+        # 2. A replenishment week value.
         # ====================================================
 
-        has_week_value = False
+        scenario_has_week_value = {
+            "ideal": False,
+            "acceptable": False
+        }
 
-        has_replenishment_week = False
+        scenario_has_replenishment_week = {
+            "ideal": False,
+            "acceptable": False
+        }
 
 
         for scenario in [
@@ -3655,9 +3732,15 @@ def server(
                 if (
                     value is not None
                     and str(value).strip() != ""
+                    and str(value).strip().isdigit()
+                    and int(
+                        str(value).strip()
+                    ) > 0
                 ):
 
-                    has_week_value = True
+                    scenario_has_week_value[
+                        scenario
+                    ] = True
 
                     break
 
@@ -3681,15 +3764,27 @@ def server(
                 ).strip() != ""
             ):
 
-                has_replenishment_week = True
+                scenario_has_replenishment_week[
+                    scenario
+                ] = True
 
 
-        if not has_week_value:
+        if not scenario_has_week_value["ideal"]:
 
             return
 
 
-        if not has_replenishment_week:
+        if not scenario_has_week_value["acceptable"]:
+
+            return
+
+
+        if not scenario_has_replenishment_week["ideal"]:
+
+            return
+
+
+        if not scenario_has_replenishment_week["acceptable"]:
 
             return
 
