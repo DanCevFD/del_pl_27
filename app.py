@@ -2,6 +2,7 @@ from shiny import App, ui, render, reactive, Inputs, Outputs, Session
 import pandas as pd
 import re
 from urllib.parse import quote
+from datetime import date, timedelta
 
 
 # ============================================================
@@ -545,122 +546,6 @@ app_ui = ui.page_fluid(
                             url;
 
                     }
-
-                }
-            );
-
-
-            // ====================================================
-            // DISABLE DOWNLOAD BUTTON UNTIL REQUIRED DATA EXISTS
-            // ====================================================
-
-            let downloadButtonEnabled = false;
-
-            function updateDownloadButton() {
-
-                const button =
-                    document.getElementById(
-                        "download_table"
-                    );
-
-                if (!button) {
-                    return;
-                }
-
-                if (!downloadButtonEnabled) {
-
-                    // Completely disable the download control
-                    button.setAttribute(
-                        "disabled",
-                        "disabled"
-                    );
-
-                    button.classList.add(
-                        "disabled"
-                    );
-
-                    button.setAttribute(
-                        "aria-disabled",
-                        "true"
-                    );
-
-                    button.setAttribute(
-                        "tabindex",
-                        "-1"
-                    );
-
-                    button.style.pointerEvents =
-                        "none";
-
-                }
-
-                else {
-
-                    // Completely re-enable the download control
-                    button.removeAttribute(
-                        "disabled"
-                    );
-
-                    button.classList.remove(
-                        "disabled"
-                    );
-
-                    button.setAttribute(
-                        "aria-disabled",
-                        "false"
-                    );
-
-                    button.removeAttribute(
-                        "tabindex"
-                    );
-
-                    button.style.pointerEvents =
-                        "";
-
-                }
-
-            }
-
-
-            Shiny.addCustomMessageHandler(
-                "set_download_button_enabled",
-                function(message) {
-
-                    downloadButtonEnabled =
-                        Boolean(
-                            message.enabled
-                        );
-
-                    updateDownloadButton();
-
-                }
-            );
-
-
-            const downloadButtonObserver =
-                new MutationObserver(
-                    function() {
-
-                        updateDownloadButton();
-
-                    }
-                );
-
-
-            downloadButtonObserver.observe(
-                document.body,
-                {
-                    childList: true,
-                    subtree: true
-                }
-            );
-
-
-            document.addEventListener(
-                "DOMContentLoaded",
-                function() {
-
-                    updateDownloadButton();
 
                 }
             );
@@ -1456,35 +1341,6 @@ app_ui = ui.page_fluid(
             width: 100%;
         }
 
-        #send {
-            background-color: #0041c2 !important;
-            border-color: #0041c2 !important;
-            color: white !important;
-        }
-
-        #send:hover {
-            background-color: #0037a8 !important;
-            border-color: #0037a8 !important;
-        }
-
-        #send:disabled,
-        #send:disabled:hover,
-        #download_table.disabled,
-        #download_table.disabled:hover {
-            background-color: #6c757d !important;
-            border-color: #6c757d !important;
-            color: white !important;
-            opacity: 0.65;
-            cursor: not-allowed !important;
-        }
-
-        .download-warning {
-            margin-top: 5px;
-            color: #dc3545;
-            font-size: 11px;
-            text-align: right;
-        }
-
         .notes-container {
             margin-top: 30px;
         }
@@ -1677,10 +1533,6 @@ def server(
         None
     )
 
-    download_warning_state = reactive.Value(
-        False
-    )
-
 
     # ========================================================
     # START INPUT
@@ -1706,10 +1558,6 @@ def server(
 
         status_message.set(
             None
-        )
-
-        download_warning_state.set(
-            False
         )
 
         try:
@@ -1761,7 +1609,7 @@ def server(
             ui.div(
                 {
                     "class":
-                    "section-title"
+                        "section-title"
                 },
 
                 "Destination"
@@ -2179,6 +2027,7 @@ def server(
 
 
         # ----------------------------------------------------
+        # IMPORTANT:
         # Inputs use RAW weeks, not normalized display weeks.
         # Example: raw 53 -> input ID scenario_week_53,
         # while the visible header says W1.
@@ -2467,20 +2316,14 @@ def server(
 
                 ui.input_action_button(
                     "send",
-                    "Send",
-                    disabled=True
+                    "Send"
                 ),
 
                 ui.download_button(
                     "download_table",
-                    "download table",
-                    disabled=True
+                    "download table"
                 )
 
-            ),
-
-            ui.output_ui(
-                "output_download_warning"
             )
 
         )
@@ -2690,6 +2533,10 @@ def server(
     # --------------------------------------------------------
     # Register a renderer for every RAW week that can occur
     # in the CSV.
+    #
+    # This is important because the visible week can be
+    # normalized (e.g. raw 53 -> W1), but the Shiny input ID
+    # remains scenario_week_53.
     # --------------------------------------------------------
 
     all_raw_weeks = sorted(
@@ -2872,6 +2719,10 @@ def server(
     # --------------------------------------------------------
     # Register the limiter for every RAW week that can occur
     # in the CSV.
+    #
+    # This is important because the visible week can be
+    # normalized (e.g. raw 53 -> W1), but the Shiny input ID
+    # remains scenario_week_53.
     # --------------------------------------------------------
 
     all_raw_weeks = sorted(
@@ -2897,117 +2748,6 @@ def server(
                 scenario,
                 week
             )
-
-
-    # ========================================================
-    # ENABLE SEND / DOWNLOAD ONLY WHEN REQUIRED DATA EXISTS
-    # ========================================================
-
-    def buttons_have_required_data():
-
-        country = current_country()
-
-        if country is None:
-            return False
-
-        # Both replenishment-week fields must contain a value.
-        for scenario in [
-            "ideal",
-            "acceptable"
-        ]:
-
-            try:
-                replenishment_week = getattr(
-                    input,
-                    f"replenishment_week_{scenario}"
-                )()
-
-            except Exception:
-                return False
-
-            if (
-                replenishment_week is None
-                or not str(
-                    replenishment_week
-                ).strip()
-            ):
-                return False
-
-
-        # At least one positive quantity must exist in
-        # any of the week cells in either table.
-        min_week = int(
-            country[
-                "min_week"
-            ]
-        )
-
-        max_week = int(
-            country[
-                "max_week"
-            ]
-        )
-
-        for scenario in [
-            "ideal",
-            "acceptable"
-        ]:
-
-            for week in range(
-                min_week,
-                max_week + 1
-            ):
-
-                try:
-                    value = getattr(
-                        input,
-                        f"{scenario}_week_{week}"
-                    )()
-
-                except Exception:
-                    value = ""
-
-                if value is None:
-                    continue
-
-                value = str(
-                    value
-                ).strip()
-
-                if not value:
-                    continue
-
-                try:
-                    if float(value) > 0:
-                        return True
-
-                except Exception:
-                    continue
-
-        return False
-
-
-    @reactive.effect
-    def update_submission_buttons():
-
-        buttons_enabled = buttons_have_required_data()
-
-        ui.update_action_button(
-            "send",
-            disabled=not buttons_enabled
-        )
-
-        try:
-            session.send_custom_message(
-                "set_download_button_enabled",
-                {
-                    "enabled":
-                        buttons_enabled
-                }
-            )
-
-        except Exception:
-            pass
 
 
     # ========================================================
@@ -3229,6 +2969,10 @@ def server(
                     "qty"
                 ]
 
+
+                # Display/output the REAL ISO week number,
+                # not the raw wrapped value.
+
                 display_week = normalize_week(
                     raw_week
                 )
@@ -3366,7 +3110,6 @@ def server(
 
         )
 
-
         combined_vector = create_r_vector(
             combined_df
         )
@@ -3472,23 +3215,6 @@ def server(
         )
 
 
-    @output
-    @render.ui
-    def output_download_warning():
-
-        if not download_warning_state():
-
-            return ui.div()
-
-        return ui.div(
-            {
-                "class":
-                    "download-warning"
-            },
-            "there is no data in both tables, please introduce information in the tables"
-        )
-
-
     # ========================================================
     # DOWNLOAD TABLE
     # ========================================================
@@ -3502,15 +3228,7 @@ def server(
 
         if country is None:
 
-            download_warning_state.set(
-                True
-            )
-
             return
-
-        download_warning_state.set(
-            False
-        )
 
         ord_value = country.get(
             "ord"
@@ -3684,18 +3402,6 @@ def server(
                     }
                 )
 
-        if not all_output_rows:
-
-            download_warning_state.set(
-                True
-            )
-
-            return
-
-        download_warning_state.set(
-            False
-        )
-
         table_df = pd.DataFrame(
             all_output_rows,
             columns=[
@@ -3734,7 +3440,6 @@ def server(
         if status_type() == "success":
 
             return ui.div(
-
                 {
                     "class":
                         "success-box"
@@ -3747,7 +3452,6 @@ def server(
             )
 
         return ui.div(
-
             {
                 "class":
                     "error-box"
