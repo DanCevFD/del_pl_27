@@ -1457,6 +1457,554 @@ app_ui = ui.page_fluid(
         """),
 
         # ====================================================
+        # EXACT ROW HEIGHT SYNCHRONIZATION
+        # ====================================================
+
+        ui.tags.script("""
+
+        (function() {
+
+            /*
+               The W table is the only height reference.
+
+               We measure the actual rendered height of:
+                   1. W header row
+                   2. W quantity row
+                   3. W percentage row
+
+               Those exact measurements are then applied to
+               the corresponding rows in the left and right
+               tables.
+
+               The month row is deliberately excluded because
+               it is already synchronized independently.
+            */
+
+
+            function setExactHeight(
+                element,
+                height
+            ) {
+
+                if (
+                    !element ||
+                    !height ||
+                    height <= 0
+                ) {
+
+                    return;
+                }
+
+
+                const value =
+                    height.toFixed(3) +
+                    "px";
+
+
+                element.style.setProperty(
+                    "height",
+                    value,
+                    "important"
+                );
+
+                element.style.setProperty(
+                    "min-height",
+                    value,
+                    "important"
+                );
+
+                element.style.setProperty(
+                    "max-height",
+                    value,
+                    "important"
+                );
+
+                element.style.setProperty(
+                    "box-sizing",
+                    "border-box",
+                    "important"
+                );
+            }
+
+
+            function prepareFixedCells(
+                row,
+                height
+            ) {
+
+                if (
+                    !row ||
+                    !height
+                ) {
+
+                    return;
+                }
+
+
+                const cells =
+                    row.querySelectorAll(
+                        "th, td"
+                    );
+
+
+                cells.forEach(
+                    function(cell) {
+
+                        setExactHeight(
+                            cell,
+                            height
+                        );
+
+
+                        /*
+                           Prevent the contents of the fixed
+                           tables from becoming the reason that
+                           their row grows beyond the W row.
+                        */
+
+                        cell.style.setProperty(
+                            "overflow",
+                            "hidden",
+                            "important"
+                        );
+
+                        cell.style.setProperty(
+                            "vertical-align",
+                            "middle",
+                            "important"
+                        );
+
+                    }
+                );
+            }
+
+
+            function syncOneSegment(
+                segment
+            ) {
+
+                const middle =
+                    segment.querySelector(
+                        ".scenario-weeks-table"
+                    );
+
+                const left =
+                    segment.querySelector(
+                        ".scenario-left-table"
+                    );
+
+                const right =
+                    segment.querySelector(
+                        ".scenario-right-table"
+                    );
+
+
+                if (
+                    !middle ||
+                    !left ||
+                    !right
+                ) {
+
+                    return;
+                }
+
+
+                const middleRows = [
+
+                    middle.querySelector(
+                        "thead tr:nth-child(2)"
+                    ),
+
+                    middle.querySelector(
+                        "tbody tr:first-child"
+                    ),
+
+                    middle.querySelector(
+                        "tbody tr:nth-child(2)"
+                    )
+
+                ];
+
+
+                const leftRows = [
+
+                    left.querySelector(
+                        "thead tr:nth-child(2)"
+                    ),
+
+                    left.querySelector(
+                        "tbody tr:first-child"
+                    ),
+
+                    left.querySelector(
+                        "tbody tr:nth-child(2)"
+                    )
+
+                ];
+
+
+                const rightRows = [
+
+                    right.querySelector(
+                        "thead tr:nth-child(2)"
+                    ),
+
+                    right.querySelector(
+                        "tbody tr:first-child"
+                    ),
+
+                    right.querySelector(
+                        "tbody tr:nth-child(2)"
+                    )
+
+                ];
+
+
+                middleRows.forEach(
+                    function(
+                        middleRow,
+                        index
+                    ) {
+
+                        if (!middleRow) {
+
+                            return;
+                        }
+
+
+                        /*
+                           IMPORTANT:
+
+                           Measure the W row before changing
+                           anything in the fixed tables.
+                        */
+
+                        const measuredHeight =
+                            middleRow
+                            .getBoundingClientRect()
+                            .height;
+
+
+                        if (
+                            !measuredHeight ||
+                            measuredHeight <= 0
+                        ) {
+
+                            return;
+                        }
+
+
+                        const leftRow =
+                            leftRows[index];
+
+                        const rightRow =
+                            rightRows[index];
+
+
+                        /*
+                           Apply the exact same measured
+                           height to the complete row.
+                        */
+
+                        setExactHeight(
+                            leftRow,
+                            measuredHeight
+                        );
+
+                        setExactHeight(
+                            rightRow,
+                            measuredHeight
+                        );
+
+
+                        /*
+                           Apply the exact same height to every
+                           cell in the fixed rows so that no cell
+                           can enlarge the row independently.
+                        */
+
+                        prepareFixedCells(
+                            leftRow,
+                            measuredHeight
+                        );
+
+                        prepareFixedCells(
+                            rightRow,
+                            measuredHeight
+                        );
+
+                    }
+                );
+
+
+                /*
+                   The right quantity row contains a flex
+                   container and an input. Keep the contents
+                   inside the measured row instead of allowing
+                   them to determine the row height.
+                */
+
+                const rightQuantityRow =
+                    right.querySelector(
+                        "tbody tr:first-child"
+                    );
+
+
+                if (rightQuantityRow) {
+
+                    const rightQuantityHeight =
+                        rightQuantityRow
+                        .getBoundingClientRect()
+                        .height;
+
+
+                    const content =
+                        rightQuantityRow.querySelector(
+                            ".replenishment-content"
+                        );
+
+
+                    if (
+                        content &&
+                        rightQuantityHeight > 0
+                    ) {
+
+                        const contentHeight =
+                            Math.max(
+                                0,
+                                rightQuantityHeight - 2
+                            );
+
+
+                        content.style.setProperty(
+                            "height",
+                            contentHeight.toFixed(3) +
+                            "px",
+                            "important"
+                        );
+
+                        content.style.setProperty(
+                            "max-height",
+                            contentHeight.toFixed(3) +
+                            "px",
+                            "important"
+                        );
+
+                        content.style.setProperty(
+                            "overflow",
+                            "hidden",
+                            "important"
+                        );
+
+                    }
+
+                }
+
+            }
+
+
+            function syncAllSegments() {
+
+                document
+                    .querySelectorAll(
+                        ".scenario-segments"
+                    )
+                    .forEach(
+                        function(segment) {
+
+                            syncOneSegment(
+                                segment
+                            );
+
+                        }
+                    );
+
+            }
+
+
+            let syncPending = false;
+
+
+            function scheduleSync() {
+
+                if (syncPending) {
+
+                    return;
+                }
+
+
+                syncPending = true;
+
+
+                requestAnimationFrame(
+                    function() {
+
+                        syncPending = false;
+
+                        syncAllSegments();
+
+
+                        /*
+                           A second pass is important because
+                           the browser can perform another table
+                           layout pass after the first styles
+                           are applied.
+                        */
+
+                        requestAnimationFrame(
+                            function() {
+
+                                syncAllSegments();
+
+                            }
+                        );
+
+                    }
+                );
+
+            }
+
+
+            /*
+               Shiny replaces the scenario tables whenever the
+               destination changes. Watch for those replacements.
+            */
+
+            const mutationObserver =
+                new MutationObserver(
+                    function() {
+
+                        scheduleSync();
+
+                    }
+                );
+
+
+            mutationObserver.observe(
+                document.body,
+                {
+                    childList: true,
+                    subtree: true
+                }
+            );
+
+
+            /*
+               Watch the W table itself. If its actual dimensions
+               change because of rendering, resizing, fonts, or
+               another browser layout pass, the other two sections
+               are updated again from the new W dimensions.
+            */
+
+            function attachResizeObservers() {
+
+                document
+                    .querySelectorAll(
+                        ".scenario-weeks-table"
+                    )
+                    .forEach(
+                        function(table) {
+
+                            if (
+                                table.dataset
+                                .rowHeightObserver ===
+                                "attached"
+                            ) {
+
+                                return;
+                            }
+
+
+                            if (
+                                typeof ResizeObserver !==
+                                "undefined"
+                            ) {
+
+                                const resizeObserver =
+                                    new ResizeObserver(
+                                        function() {
+
+                                            scheduleSync();
+
+                                        }
+                                    );
+
+
+                                resizeObserver.observe(
+                                    table
+                                );
+
+
+                                table._rowHeightObserver =
+                                    resizeObserver;
+
+
+                                table.dataset
+                                    .rowHeightObserver =
+                                    "attached";
+
+                            }
+
+                        }
+                    );
+
+
+                scheduleSync();
+
+            }
+
+
+            document.addEventListener(
+                "DOMContentLoaded",
+                function() {
+
+                    attachResizeObservers();
+
+                    setTimeout(
+                        attachResizeObservers,
+                        50
+                    );
+
+                    setTimeout(
+                        attachResizeObservers,
+                        200
+                    );
+
+                    setTimeout(
+                        attachResizeObservers,
+                        500
+                    );
+
+                }
+            );
+
+
+            window.addEventListener(
+                "resize",
+                function() {
+
+                    scheduleSync();
+
+                }
+            );
+
+
+            setTimeout(
+                attachResizeObservers,
+                100
+            );
+
+
+            setTimeout(
+                attachResizeObservers,
+                500
+            );
+
+        })();
+
+        """),
+
+        # ====================================================
         # CSS
         # ====================================================
 
@@ -1583,7 +2131,10 @@ app_ui = ui.page_fluid(
         }
 
 
-        /* Month row */
+        /*
+           The month row is intentionally kept fixed because
+           all three month rows already match exactly.
+        */
 
         .scenario-left-table thead tr:first-child,
         .scenario-weeks-table thead tr:first-child,
@@ -1605,80 +2156,49 @@ app_ui = ui.page_fluid(
 
 
         /*
-           The middle W table is the reference table.
-           Its input row is naturally determined by the
-           30px input. The left and right cells are given
-           the same vertical geometry without introducing
-           their own larger intrinsic height.
-        */
+           IMPORTANT:
 
-        .scenario-left-table tbody tr:first-child,
-        .scenario-weeks-table tbody tr:first-child,
-        .scenario-right-table tbody tr:first-child {
-            height: 38px !important;
-        }
+           Do not define heights for the remaining rows here.
 
-        .scenario-left-table tbody tr:first-child > td,
-        .scenario-weeks-table tbody tr:first-child > td,
-        .scenario-right-table tbody tr:first-child > td {
-            height: 38px !important;
-            min-height: 38px !important;
-            max-height: 38px !important;
-            padding-top: 4px !important;
-            padding-bottom: 4px !important;
-            box-sizing: border-box !important;
-            line-height: 16px !important;
-            vertical-align: middle !important;
-        }
-
-
-        /*
-           Header cells are normalized to the same two-line
-           geometry used by the W section.
+           Their heights come directly from the actual rendered
+           W table through the synchronization JavaScript above.
         */
 
         .scenario-left-table thead tr:nth-child(2),
         .scenario-weeks-table thead tr:nth-child(2),
-        .scenario-right-table thead tr:nth-child(2) {
-            height: 44px !important;
-        }
+        .scenario-right-table thead tr:nth-child(2),
 
-        .scenario-left-table thead tr:nth-child(2) > th,
-        .scenario-weeks-table thead tr:nth-child(2) > th,
-        .scenario-right-table thead tr:nth-child(2) > th {
-            height: 44px !important;
-            min-height: 44px !important;
-            max-height: 44px !important;
-            padding-top: 6px !important;
-            padding-bottom: 6px !important;
-            box-sizing: border-box !important;
-            line-height: 16px !important;
-            vertical-align: middle !important;
-        }
-
-
-        /*
-           Percentage cells contain only text, so they are
-           kept at the same compact height as the W section.
-        */
+        .scenario-left-table tbody tr:first-child,
+        .scenario-weeks-table tbody tr:first-child,
+        .scenario-right-table tbody tr:first-child,
 
         .scenario-left-table tbody tr:nth-child(2),
         .scenario-weeks-table tbody tr:nth-child(2),
         .scenario-right-table tbody tr:nth-child(2) {
-            height: 24px !important;
+            height: auto !important;
         }
 
-        .scenario-left-table tbody tr:nth-child(2) > td,
-        .scenario-weeks-table tbody tr:nth-child(2) > td,
-        .scenario-right-table tbody tr:nth-child(2) > td {
-            height: 24px !important;
-            min-height: 24px !important;
-            max-height: 24px !important;
-            padding-top: 3px !important;
-            padding-bottom: 3px !important;
+
+        /*
+           The fixed sections must not introduce additional
+           vertical padding that makes their cells intrinsically
+           larger than the W cells.
+        */
+
+        .scenario-left-table thead tr:nth-child(2) > th,
+        .scenario-right-table thead tr:nth-child(2) > th {
             box-sizing: border-box !important;
-            line-height: 15px !important;
             vertical-align: middle !important;
+            overflow: hidden !important;
+        }
+
+        .scenario-left-table tbody tr:first-child > td,
+        .scenario-right-table tbody tr:first-child > td,
+        .scenario-left-table tbody tr:nth-child(2) > td,
+        .scenario-right-table tbody tr:nth-child(2) > td {
+            box-sizing: border-box !important;
+            vertical-align: middle !important;
+            overflow: hidden !important;
         }
 
 
