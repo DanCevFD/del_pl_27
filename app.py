@@ -1501,6 +1501,200 @@ app_ui = ui.page_fluid(
         """),
 
         # ====================================================
+        # WEEK-ONLY HORIZONTAL SCROLLBAR
+        # ====================================================
+
+        ui.tags.script("""
+
+        (function() {
+
+            const LEFT_FIXED_WIDTH = 422;
+            const RIGHT_FIXED_WIDTH = 197;
+
+            function setupWeekScrollbar(wrapper) {
+
+                const table =
+                    wrapper.querySelector(
+                        ".delivery-table"
+                    );
+
+                if (!table) {
+                    return;
+                }
+
+                let scrollbar =
+                    wrapper.querySelector(
+                        ".week-only-scrollbar"
+                    );
+
+                if (!scrollbar) {
+
+                    scrollbar =
+                        document.createElement(
+                            "div"
+                        );
+
+                    scrollbar.className =
+                        "week-only-scrollbar";
+
+                    const inner =
+                        document.createElement(
+                            "div"
+                        );
+
+                    inner.className =
+                        "week-only-scrollbar-inner";
+
+                    scrollbar.appendChild(
+                        inner
+                    );
+
+                    wrapper.appendChild(
+                        scrollbar
+                    );
+
+                    scrollbar.addEventListener(
+                        "scroll",
+                        function() {
+
+                            wrapper.scrollLeft =
+                                scrollbar.scrollLeft;
+
+                        }
+                    );
+
+                    wrapper.addEventListener(
+                        "scroll",
+                        function() {
+
+                            scrollbar.scrollLeft =
+                                wrapper.scrollLeft;
+
+                        }
+                    );
+                }
+
+                const wrapperWidth =
+                    wrapper.clientWidth;
+
+                const tableWidth =
+                    table.scrollWidth;
+
+                const weekSectionWidth =
+                    wrapperWidth -
+                    LEFT_FIXED_WIDTH -
+                    RIGHT_FIXED_WIDTH;
+
+                const weekContentWidth =
+                    tableWidth -
+                    LEFT_FIXED_WIDTH -
+                    RIGHT_FIXED_WIDTH;
+
+                if (
+                    tableWidth <= wrapperWidth
+                ) {
+
+                    scrollbar.style.display =
+                        "none";
+
+                    return;
+                }
+
+                scrollbar.style.display =
+                    "block";
+
+                scrollbar.style.left =
+                    LEFT_FIXED_WIDTH + "px";
+
+                scrollbar.style.width =
+                    Math.max(
+                        0,
+                        weekSectionWidth
+                    ) + "px";
+
+                const inner =
+                    scrollbar.querySelector(
+                        ".week-only-scrollbar-inner"
+                    );
+
+                inner.style.width =
+                    Math.max(
+                        weekSectionWidth,
+                        weekContentWidth
+                    ) + "px";
+
+                scrollbar.scrollLeft =
+                    wrapper.scrollLeft;
+            }
+
+
+            function updateWeekScrollbars() {
+
+                document
+                    .querySelectorAll(
+                        ".delivery-table-wrapper"
+                    )
+                    .forEach(
+                        function(wrapper) {
+
+                            setupWeekScrollbar(
+                                wrapper
+                            );
+
+                        }
+                    );
+            }
+
+
+            const observer =
+                new MutationObserver(
+                    function() {
+
+                        updateWeekScrollbars();
+
+                    }
+                );
+
+
+            observer.observe(
+                document.body,
+                {
+                    childList: true,
+                    subtree: true
+                }
+            );
+
+
+            window.addEventListener(
+                "resize",
+                function() {
+
+                    updateWeekScrollbars();
+
+                }
+            );
+
+
+            document.addEventListener(
+                "DOMContentLoaded",
+                function() {
+
+                    updateWeekScrollbars();
+
+                }
+            );
+
+
+            setTimeout(
+                updateWeekScrollbars,
+                100
+            );
+
+        })();
+
+        """),
+
+        # ====================================================
         # CSS
         # ====================================================
 
@@ -1949,6 +2143,69 @@ app_ui = ui.page_fluid(
 
         .week-picker-week:hover {
             background-color: #f0f1f3;
+        }
+
+
+        /* ====================================================
+           WEEK-ONLY SCROLLBAR
+           ==================================================== */
+
+        .week-only-scrollbar {
+            position: absolute;
+            bottom: 0;
+            height: 17px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            z-index: 20;
+            background: transparent;
+            box-sizing: border-box;
+        }
+
+        .week-only-scrollbar-inner {
+            height: 1px;
+            min-width: 100%;
+        }
+
+        .week-only-scrollbar::-webkit-scrollbar {
+            height: 17px;
+        }
+
+        .week-only-scrollbar::-webkit-scrollbar-track {
+            background-color: #f0f1f3;
+        }
+
+        .week-only-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #b7b9bc;
+            border-radius: 8px;
+            border: 2px solid #f0f1f3;
+        }
+
+        .week-only-scrollbar::-webkit-scrollbar-thumb:hover {
+            background-color: #9fa2a6;
+        }
+
+        .week-only-scrollbar {
+            scrollbar-color: #b7b9bc #f0f1f3;
+        }
+
+        /* Hide the original scrollbar visually while
+           preserving its normal space and scroll behavior. */
+
+        .delivery-table-wrapper::-webkit-scrollbar {
+            height: 17px;
+        }
+
+        .delivery-table-wrapper::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .delivery-table-wrapper::-webkit-scrollbar-thumb {
+            background: transparent;
+            border: none;
+        }
+
+        .delivery-table-wrapper {
+            scrollbar-color: transparent transparent;
         }
 
         """)
@@ -3287,10 +3544,6 @@ def server(
         # ====================================================
         # BUTTON VALIDATION
         # ====================================================
-        # Both scenarios must contain:
-        # 1. At least one quantity in a week column.
-        # 2. A replenishment week value.
-        # ====================================================
 
         scenario_has_week_value = {
             "ideal": False,
@@ -3631,9 +3884,6 @@ def server(
                 ]
 
 
-                # Display/output the REAL ISO week number,
-                # not the raw wrapped value.
-
                 display_week = normalize_week(
                     raw_week
                 )
@@ -3901,10 +4151,6 @@ def server(
 
         # ====================================================
         # BUTTON VALIDATION
-        # ====================================================
-        # Both scenarios must contain:
-        # 1. At least one quantity in a week column.
-        # 2. A replenishment week value.
         # ====================================================
 
         scenario_has_week_value = {
