@@ -1573,19 +1573,13 @@ app_ui = ui.page_fluid(
 
 
         /* ====================================================
-           FORCE IDENTICAL ROW HEIGHTS
+           ROW HEIGHTS
            ==================================================== */
-
-        /*
-           The three sections are separate HTML tables.
-           Force the actual table rows and cells to have exactly
-           the same dimensions in every section.
-        */
 
         .scenario-left-table,
         .scenario-weeks-table,
         .scenario-right-table {
-            height: 137px !important;
+            border-collapse: collapse;
         }
 
 
@@ -1610,68 +1604,80 @@ app_ui = ui.page_fluid(
         }
 
 
-        /* Header row */
-
-        .scenario-left-table thead tr:nth-child(2),
-        .scenario-weeks-table thead tr:nth-child(2),
-        .scenario-right-table thead tr:nth-child(2) {
-            height: 45px !important;
-        }
-
-        .scenario-left-table thead tr:nth-child(2) > th,
-        .scenario-weeks-table thead tr:nth-child(2) > th,
-        .scenario-right-table thead tr:nth-child(2) > th {
-            height: 45px !important;
-            min-height: 45px !important;
-            max-height: 45px !important;
-            padding-top: 7px !important;
-            padding-bottom: 7px !important;
-            box-sizing: border-box !important;
-            line-height: normal !important;
-            vertical-align: middle !important;
-        }
-
-
-        /* Quantity row */
+        /*
+           The middle W table is the reference table.
+           Its input row is naturally determined by the
+           30px input. The left and right cells are given
+           the same vertical geometry without introducing
+           their own larger intrinsic height.
+        */
 
         .scenario-left-table tbody tr:first-child,
         .scenario-weeks-table tbody tr:first-child,
         .scenario-right-table tbody tr:first-child {
-            height: 40px !important;
+            height: 38px !important;
         }
 
         .scenario-left-table tbody tr:first-child > td,
         .scenario-weeks-table tbody tr:first-child > td,
         .scenario-right-table tbody tr:first-child > td {
-            height: 40px !important;
-            min-height: 40px !important;
-            max-height: 40px !important;
+            height: 38px !important;
+            min-height: 38px !important;
+            max-height: 38px !important;
             padding-top: 4px !important;
             padding-bottom: 4px !important;
             box-sizing: border-box !important;
-            line-height: normal !important;
+            line-height: 16px !important;
             vertical-align: middle !important;
         }
 
 
-        /* Percentage row */
+        /*
+           Header cells are normalized to the same two-line
+           geometry used by the W section.
+        */
+
+        .scenario-left-table thead tr:nth-child(2),
+        .scenario-weeks-table thead tr:nth-child(2),
+        .scenario-right-table thead tr:nth-child(2) {
+            height: 44px !important;
+        }
+
+        .scenario-left-table thead tr:nth-child(2) > th,
+        .scenario-weeks-table thead tr:nth-child(2) > th,
+        .scenario-right-table thead tr:nth-child(2) > th {
+            height: 44px !important;
+            min-height: 44px !important;
+            max-height: 44px !important;
+            padding-top: 6px !important;
+            padding-bottom: 6px !important;
+            box-sizing: border-box !important;
+            line-height: 16px !important;
+            vertical-align: middle !important;
+        }
+
+
+        /*
+           Percentage cells contain only text, so they are
+           kept at the same compact height as the W section.
+        */
 
         .scenario-left-table tbody tr:nth-child(2),
         .scenario-weeks-table tbody tr:nth-child(2),
         .scenario-right-table tbody tr:nth-child(2) {
-            height: 25px !important;
+            height: 24px !important;
         }
 
         .scenario-left-table tbody tr:nth-child(2) > td,
         .scenario-weeks-table tbody tr:nth-child(2) > td,
         .scenario-right-table tbody tr:nth-child(2) > td {
-            height: 25px !important;
-            min-height: 25px !important;
-            max-height: 25px !important;
-            padding-top: 4px !important;
-            padding-bottom: 4px !important;
+            height: 24px !important;
+            min-height: 24px !important;
+            max-height: 24px !important;
+            padding-top: 3px !important;
+            padding-bottom: 3px !important;
             box-sizing: border-box !important;
-            line-height: normal !important;
+            line-height: 15px !important;
             vertical-align: middle !important;
         }
 
@@ -1864,7 +1870,7 @@ app_ui = ui.page_fluid(
         .replenishment-header {
             background-color: #f0f1f3 !important;
             white-space: normal !important;
-            line-height: 1.2;
+            line-height: 16px !important;
         }
 
         .replenishment-cell {
@@ -1879,6 +1885,9 @@ app_ui = ui.page_fluid(
             justify-content: center;
             gap: 4px;
             width: 100%;
+            height: 30px;
+            max-height: 30px;
+            overflow: hidden;
         }
 
         .replenishment-label {
