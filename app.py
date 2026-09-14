@@ -259,7 +259,6 @@ def get_month_for_week(
         min_date
     )
 
-    # ISO year belonging to the country's minimum date
     base_year = int(
         min_date.isocalendar().year
     )
@@ -267,20 +266,6 @@ def get_month_for_week(
     normalized_week = normalize_week(
         week
     )
-
-    # --------------------------------------------------------
-    # Detect crossing from W52 back to W1.
-    #
-    # Example:
-    #
-    # min_week = 50
-    # max_week = 54
-    #
-    # displayed:
-    # W50 W51 W52 W1 W2
-    #
-    # W1 and W2 belong to the following ISO year.
-    # --------------------------------------------------------
 
     if original_min_week is not None:
 
@@ -1028,11 +1013,6 @@ app_ui = ui.page_fluid(
                     "‹";
 
 
-                /*
-                 * Do not allow browsing to a month before
-                 * the current month.
-                 */
-
                 previousButton.disabled =
                     isCurrentMonth();
 
@@ -1058,11 +1038,6 @@ app_ui = ui.page_fluid(
 
                             pickerYear--;
                         }
-
-                        /*
-                         * Safety check so the picker can never
-                         * move before the current month.
-                         */
 
                         if (
                             isBeforeCurrentMonth()
@@ -1223,13 +1198,6 @@ app_ui = ui.page_fluid(
                     );
 
 
-                /*
-                 * Keep the existing display of weeks, except
-                 * that the current ISO week is allowed to appear
-                 * even when its Monday falls in the previous
-                 * calendar month.
-                 */
-
                 if (
                     monday.getMonth() !==
                     pickerMonth
@@ -1254,12 +1222,6 @@ app_ui = ui.page_fluid(
                     monday <= lastDay
                 ) {
 
-                    /*
-                     * Keep the current week if it started in the
-                     * previous month. For all other weeks,
-                     * preserve the original month filtering.
-                     */
-
                     const isCurrentWeek =
                         monday.getTime() ===
                         currentWeekMonday.getTime();
@@ -1277,12 +1239,6 @@ app_ui = ui.page_fluid(
                         break;
                     }
 
-
-                    /*
-                     * This is the actual restriction:
-                     * never display a week before today's
-                     * ISO week.
-                     */
 
                     if (
                         monday >=
@@ -1620,9 +1576,17 @@ app_ui = ui.page_fluid(
             min-width: 422px;
         }
 
+        /*
+         * IMPORTANT:
+         * Do not let the week table stretch to the width of
+         * the scroll container. Every week must remain exactly
+         * 62px wide.
+         */
         .delivery-table-weeks {
-            width: max-content;
-            min-width: 100%;
+            width: max-content !important;
+            min-width: 0 !important;
+            max-width: none;
+            table-layout: fixed;
         }
 
         .delivery-table-right {
@@ -1637,6 +1601,7 @@ app_ui = ui.page_fluid(
             text-align: center;
             font-weight: 600;
             white-space: nowrap;
+            box-sizing: border-box;
         }
 
         .delivery-table td {
@@ -1644,6 +1609,7 @@ app_ui = ui.page_fluid(
             padding: 4px;
             text-align: center;
             white-space: nowrap;
+            box-sizing: border-box;
         }
 
         .delivery-table-left th:nth-child(1),
@@ -1674,13 +1640,20 @@ app_ui = ui.page_fluid(
             max-width: 80px;
         }
 
+        /*
+         * FIX:
+         * Lock every week column to exactly 62px.
+         * box-sizing:border-box means the 62px includes
+         * the cell border and padding.
+         */
         .delivery-table-weeks th,
         .delivery-table-weeks td {
-            width: 62px;
-            min-width: 62px;
-            max-width: 62px;
+            width: 62px !important;
+            min-width: 62px !important;
+            max-width: 62px !important;
             padding-left: 2px;
             padding-right: 2px;
+            box-sizing: border-box;
         }
 
         .delivery-table-right th:nth-child(1),
@@ -2275,14 +2248,6 @@ def server(
             ]
         )
 
-        # ----------------------------------------------------
-        # IMPORTANT:
-        # Keep the ORIGINAL week numbers internally because
-        # these are the IDs of the inputs.
-        #
-        # Only the displayed week number is normalized.
-        # ----------------------------------------------------
-
         raw_weeks = get_week_range(
             min_week,
             max_week
@@ -2523,13 +2488,6 @@ def server(
 
         week_quantity_cells = []
 
-
-        # ----------------------------------------------------
-        # IMPORTANT:
-        # Inputs use RAW weeks, not normalized display weeks.
-        # Example: raw 53 -> input ID scenario_week_53,
-        # while the visible header says W1.
-        # ----------------------------------------------------
 
         for week in raw_weeks:
 
@@ -2988,9 +2946,6 @@ def server(
 
             total = 0
 
-            # Keep RAW weeks here because these are the
-            # actual Shiny input IDs.
-
             for week in get_week_range(
                 min_week,
                 max_week
@@ -3079,9 +3034,6 @@ def server(
 
             total = 0
 
-            # Use RAW week numbers because these are the
-            # actual Shiny input IDs.
-
             for raw_week in get_week_range(
                 min_week,
                 max_week
@@ -3112,8 +3064,6 @@ def server(
 
                     continue
 
-
-            # Current RAW week
 
             try:
 
@@ -3154,15 +3104,6 @@ def server(
 
         return percentage
 
-
-    # --------------------------------------------------------
-    # Register a renderer for every RAW week that can occur
-    # in the CSV.
-    #
-    # This is important because the visible week can be
-    # normalized (e.g. raw 53 -> W1), but the Shiny input ID
-    # remains scenario_week_53.
-    # --------------------------------------------------------
 
     all_raw_weeks = sorted(
         {
@@ -3214,11 +3155,6 @@ def server(
 
                 return
 
-
-            # ------------------------------------------------
-            # ORD
-            # ------------------------------------------------
-
             ord_value = country.get(
                 "ord"
             )
@@ -3240,11 +3176,6 @@ def server(
             except Exception:
 
                 return
-
-
-            # ------------------------------------------------
-            # CURRENT VALUE
-            # ------------------------------------------------
 
             current_value = getattr(
                 input,
@@ -3268,10 +3199,6 @@ def server(
                 current_value
             )
 
-
-            # ------------------------------------------------
-            # OTHER WEEKS
-            # ------------------------------------------------
 
             other_total = 0
 
@@ -3341,15 +3268,6 @@ def server(
         return limit_week
 
 
-    # --------------------------------------------------------
-    # Register the limiter for every RAW week that can occur
-    # in the CSV.
-    #
-    # This is important because the visible week can be
-    # normalized (e.g. raw 53 -> W1), but the Shiny input ID
-    # remains scenario_week_53.
-    # --------------------------------------------------------
-
     all_raw_weeks = sorted(
         {
             week
@@ -3399,14 +3317,6 @@ def server(
 
             return
 
-
-        # ====================================================
-        # BUTTON VALIDATION
-        # ====================================================
-        # Both scenarios must contain:
-        # 1. At least one quantity in a week column.
-        # 2. A replenishment week value.
-        # ====================================================
 
         scenario_has_week_value = {
             "ideal": False,
@@ -3550,10 +3460,6 @@ def server(
             return
 
 
-        # ====================================================
-        # ORD
-        # ====================================================
-
         ord_value = country.get(
             "ord"
         )
@@ -3572,10 +3478,6 @@ def server(
                 )
             )
 
-
-        # ====================================================
-        # BUILD SCENARIO DATA
-        # ====================================================
 
         all_output_rows = []
 
@@ -3604,10 +3506,6 @@ def server(
             total = 0
 
 
-            # =================================================
-            # REPLENISHMENT WEEK
-            # =================================================
-
             replenishment_week = ""
 
             try:
@@ -3629,10 +3527,6 @@ def server(
                 replenishment_week
             ).strip()
 
-
-            # =================================================
-            # READ RAW WEEK INPUTS
-            # =================================================
 
             for week in get_week_range(
                 min_week,
@@ -3689,10 +3583,6 @@ def server(
                 )
 
 
-            # =================================================
-            # ORD CHECK
-            # =================================================
-
             if (
                 ord_value is not None
                 and total > ord_value
@@ -3711,10 +3601,6 @@ def server(
                 return
 
 
-            # =================================================
-            # REQUIRE QUANTITY
-            # =================================================
-
             if total <= 0:
 
                 status_type.set(
@@ -3729,10 +3615,6 @@ def server(
                 return
 
 
-            # =================================================
-            # BUILD OUTPUT
-            # =================================================
-
             output_rows = []
 
 
@@ -3746,9 +3628,6 @@ def server(
                     "qty"
                 ]
 
-
-                # Display/output the REAL ISO week number,
-                # not the raw wrapped value.
 
                 display_week = normalize_week(
                     raw_week
@@ -4014,14 +3893,6 @@ def server(
 
             return
 
-
-        # ====================================================
-        # BUTTON VALIDATION
-        # ====================================================
-        # Both scenarios must contain:
-        # 1. At least one quantity in a week column.
-        # 2. A replenishment week value.
-        # ====================================================
 
         scenario_has_week_value = {
             "ideal": False,
