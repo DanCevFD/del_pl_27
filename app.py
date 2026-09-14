@@ -1465,87 +1465,106 @@ app_ui = ui.page_fluid(
         (function() {
 
             /*
-               The W table remains the reference.
+               The W table is the only height reference.
 
-               The important difference here is that the measured
-               W heights are rounded UP to whole CSS pixels and
-               then applied to ALL THREE tables, including W itself.
+               We measure the actual rendered height of:
+                   1. W header row
+                   2. W quantity row
+                   3. W percentage row
 
-               This prevents fractional/sub-pixel row heights from
-               producing border lines that are visually a fraction
-               of a pixel apart.
+               Those exact measurements are then applied to
+               the corresponding rows in the left and right
+               tables.
+
+               The month row is deliberately excluded because
+               it is already synchronized independently.
             */
 
-            function setRowHeight(row, height, sourceRow) {
 
-                if (!row || !height || height <= 0) {
+            function setExactHeight(
+                element,
+                height
+            ) {
+
+                if (
+                    !element ||
+                    !height ||
+                    height <= 0
+                ) {
+
                     return;
                 }
 
-                const value = Math.ceil(height) + "px";
 
-                row.style.setProperty(
+                const value =
+                    height.toFixed(3) +
+                    "px";
+
+
+                element.style.setProperty(
                     "height",
                     value,
                     "important"
                 );
 
-                row.style.setProperty(
+                element.style.setProperty(
                     "min-height",
                     value,
                     "important"
                 );
 
-                row.style.setProperty(
+                element.style.setProperty(
                     "max-height",
                     value,
                     "important"
                 );
 
-                row.style.setProperty(
+                element.style.setProperty(
                     "box-sizing",
                     "border-box",
                     "important"
                 );
+            }
 
-                const sourceCell =
-                    sourceRow
-                        ? sourceRow.querySelector("th, td")
-                        : null;
 
-                let sourceLineHeight = "";
+            function prepareFixedCells(
+                row,
+                height
+            ) {
 
-                if (sourceCell) {
-                    sourceLineHeight =
-                        getComputedStyle(
-                            sourceCell
-                        ).lineHeight;
+                if (
+                    !row ||
+                    !height
+                ) {
+
+                    return;
                 }
 
-                row.querySelectorAll("th, td").forEach(
+
+                const cells =
+                    row.querySelectorAll(
+                        "th, td"
+                    );
+
+
+                cells.forEach(
                     function(cell) {
 
-                        cell.style.setProperty(
-                            "height",
-                            value,
-                            "important"
+                        setExactHeight(
+                            cell,
+                            height
                         );
 
-                        cell.style.setProperty(
-                            "min-height",
-                            value,
-                            "important"
-                        );
+
+                        /*
+                           Prevent the contents of the fixed
+                           tables from becoming the reason that
+                           their row grows beyond the W row.
+                        */
 
                         cell.style.setProperty(
-                            "max-height",
-                            value,
-                            "important"
-                        );
-
-                        cell.style.setProperty(
-                            "box-sizing",
-                            "border-box",
+                            "overflow",
+                            "hidden",
                             "important"
                         );
 
@@ -1555,82 +1574,14 @@ app_ui = ui.page_fluid(
                             "important"
                         );
 
-                        cell.style.setProperty(
-                            "overflow",
-                            "hidden",
-                            "important"
-                        );
-
-                        /*
-                           Keep normal cells visually consistent with
-                           the W section. For the two-line fixed headers,
-                           calculate a line-height that fits exactly
-                           inside the common row height.
-                        */
-
-                        if (
-                            cell.querySelector("br")
-                        ) {
-
-                            const borderTop =
-                                parseFloat(
-                                    getComputedStyle(
-                                        cell
-                                    ).borderTopWidth
-                                ) || 0;
-
-                            const borderBottom =
-                                parseFloat(
-                                    getComputedStyle(
-                                        cell
-                                    ).borderBottomWidth
-                                ) || 0;
-
-                            const available =
-                                Math.max(
-                                    1,
-                                    Math.ceil(height) -
-                                    borderTop -
-                                    borderBottom
-                                );
-
-                            cell.style.setProperty(
-                                "padding-top",
-                                "0px",
-                                "important"
-                            );
-
-                            cell.style.setProperty(
-                                "padding-bottom",
-                                "0px",
-                                "important"
-                            );
-
-                            cell.style.setProperty(
-                                "line-height",
-                                (available / 2).toFixed(3) + "px",
-                                "important"
-                            );
-
-                        }
-                        else if (
-                            sourceLineHeight
-                        ) {
-
-                            cell.style.setProperty(
-                                "line-height",
-                                sourceLineHeight,
-                                "important"
-                            );
-
-                        }
-
                     }
                 );
             }
 
 
-            function syncOneSegment(segment) {
+            function syncOneSegment(
+                segment
+            ) {
 
                 const middle =
                     segment.querySelector(
@@ -1647,11 +1598,13 @@ app_ui = ui.page_fluid(
                         ".scenario-right-table"
                     );
 
+
                 if (
                     !middle ||
                     !left ||
                     !right
                 ) {
+
                     return;
                 }
 
@@ -1714,56 +1667,70 @@ app_ui = ui.page_fluid(
                     ) {
 
                         if (!middleRow) {
+
                             return;
                         }
 
+
                         /*
-                           Measure the natural W height before
-                           changing any of the three tables.
+                           IMPORTANT:
+
+                           Measure the W row before changing
+                           anything in the fixed tables.
                         */
 
                         const measuredHeight =
                             middleRow
-                                .getBoundingClientRect()
-                                .height;
+                            .getBoundingClientRect()
+                            .height;
+
 
                         if (
                             !measuredHeight ||
                             measuredHeight <= 0
                         ) {
+
                             return;
                         }
 
-                        /*
-                           Use one whole-pixel height for the
-                           corresponding row in ALL sections.
 
-                           The W row is also forced to this height.
-                           This is the key change that removes the
-                           remaining sub-pixel border mismatch.
+                        const leftRow =
+                            leftRows[index];
+
+                        const rightRow =
+                            rightRows[index];
+
+
+                        /*
+                           Apply the exact same measured
+                           height to the complete row.
                         */
 
-                        const commonHeight =
-                            Math.ceil(
-                                measuredHeight
-                            );
-
-                        setRowHeight(
-                            middleRow,
-                            commonHeight,
-                            middleRow
+                        setExactHeight(
+                            leftRow,
+                            measuredHeight
                         );
 
-                        setRowHeight(
-                            leftRows[index],
-                            commonHeight,
-                            middleRow
+                        setExactHeight(
+                            rightRow,
+                            measuredHeight
                         );
 
-                        setRowHeight(
-                            rightRows[index],
-                            commonHeight,
-                            middleRow
+
+                        /*
+                           Apply the exact same height to every
+                           cell in the fixed rows so that no cell
+                           can enlarge the row independently.
+                        */
+
+                        prepareFixedCells(
+                            leftRow,
+                            measuredHeight
+                        );
+
+                        prepareFixedCells(
+                            rightRow,
+                            measuredHeight
                         );
 
                     }
@@ -1771,8 +1738,10 @@ app_ui = ui.page_fluid(
 
 
                 /*
-                   Keep the replenishment controls inside the exact
-                   common height of the quantity row.
+                   The right quantity row contains a flex
+                   container and an input. Keep the contents
+                   inside the measured row instead of allowing
+                   them to determine the row height.
                 */
 
                 const rightQuantityRow =
@@ -1780,40 +1749,44 @@ app_ui = ui.page_fluid(
                         "tbody tr:first-child"
                     );
 
+
                 if (rightQuantityRow) {
 
-                    const commonHeight =
+                    const rightQuantityHeight =
                         rightQuantityRow
-                            .getBoundingClientRect()
-                            .height;
+                        .getBoundingClientRect()
+                        .height;
+
 
                     const content =
                         rightQuantityRow.querySelector(
                             ".replenishment-content"
                         );
 
+
                     if (
                         content &&
-                        commonHeight > 0
+                        rightQuantityHeight > 0
                     ) {
 
                         const contentHeight =
                             Math.max(
                                 0,
-                                Math.ceil(
-                                    commonHeight
-                                ) - 2
+                                rightQuantityHeight - 2
                             );
+
 
                         content.style.setProperty(
                             "height",
-                            contentHeight + "px",
+                            contentHeight.toFixed(3) +
+                            "px",
                             "important"
                         );
 
                         content.style.setProperty(
                             "max-height",
-                            contentHeight + "px",
+                            contentHeight.toFixed(3) +
+                            "px",
                             "important"
                         );
 
@@ -1855,10 +1828,13 @@ app_ui = ui.page_fluid(
             function scheduleSync() {
 
                 if (syncPending) {
+
                     return;
                 }
 
+
                 syncPending = true;
+
 
                 requestAnimationFrame(
                     function() {
@@ -1867,25 +1843,18 @@ app_ui = ui.page_fluid(
 
                         syncAllSegments();
 
+
                         /*
-                           Run two additional layout passes. The
-                           first pass establishes the common integer
-                           heights; the following passes confirm that
-                           the browser has settled all table borders.
+                           A second pass is important because
+                           the browser can perform another table
+                           layout pass after the first styles
+                           are applied.
                         */
 
                         requestAnimationFrame(
                             function() {
 
                                 syncAllSegments();
-
-                                requestAnimationFrame(
-                                    function() {
-
-                                        syncAllSegments();
-
-                                    }
-                                );
 
                             }
                         );
@@ -1898,7 +1867,7 @@ app_ui = ui.page_fluid(
 
             /*
                Shiny replaces the scenario tables whenever the
-               destination changes.
+               destination changes. Watch for those replacements.
             */
 
             const mutationObserver =
@@ -1921,7 +1890,10 @@ app_ui = ui.page_fluid(
 
 
             /*
-               Re-run whenever the W table itself changes size.
+               Watch the W table itself. If its actual dimensions
+               change because of rendering, resizing, fonts, or
+               another browser layout pass, the other two sections
+               are updated again from the new W dimensions.
             */
 
             function attachResizeObservers() {
@@ -1935,11 +1907,13 @@ app_ui = ui.page_fluid(
 
                             if (
                                 table.dataset
-                                    .rowHeightObserver ===
+                                .rowHeightObserver ===
                                 "attached"
                             ) {
+
                                 return;
                             }
+
 
                             if (
                                 typeof ResizeObserver !==
@@ -1955,12 +1929,15 @@ app_ui = ui.page_fluid(
                                         }
                                     );
 
+
                                 resizeObserver.observe(
                                     table
                                 );
 
+
                                 table._rowHeightObserver =
                                     resizeObserver;
+
 
                                 table.dataset
                                     .rowHeightObserver =
@@ -1970,6 +1947,7 @@ app_ui = ui.page_fluid(
 
                         }
                     );
+
 
                 scheduleSync();
 
@@ -2015,6 +1993,7 @@ app_ui = ui.page_fluid(
                 attachResizeObservers,
                 100
             );
+
 
             setTimeout(
                 attachResizeObservers,
