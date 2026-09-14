@@ -225,20 +225,18 @@ def get_week_range(
     max_week
 ):
 
-    weeks = []
+    min_week = int(min_week)
+    max_week = int(max_week)
 
-    for week in range(
-        int(min_week),
-        int(max_week) + 1
-    ):
+    if max_week < min_week:
+        max_week += 52
 
-        weeks.append(
-            normalize_week(
-                week
-            )
+    return list(
+        range(
+            min_week,
+            max_week + 1
         )
-
-    return weeks
+    )
 
 
 # ============================================================
@@ -2216,11 +2214,9 @@ def server(
         # Only the displayed week number is normalized.
         # ----------------------------------------------------
 
-        raw_weeks = list(
-            range(
-                min_week,
-                max_week + 1
-            )
+        raw_weeks = get_week_range(
+            min_week,
+            max_week
         )
 
         display_weeks = [
@@ -2793,9 +2789,9 @@ def server(
             # Keep RAW weeks here because these are the
             # actual Shiny input IDs.
 
-            for week in range(
+            for week in get_week_range(
                 min_week,
-                max_week + 1
+                max_week
             ):
 
                 value = getattr(
@@ -2884,9 +2880,9 @@ def server(
             # Use RAW week numbers because these are the
             # actual Shiny input IDs.
 
-            for raw_week in range(
+            for raw_week in get_week_range(
                 min_week,
-                max_week + 1
+                max_week
             ):
 
                 try:
@@ -2970,9 +2966,9 @@ def server(
         {
             week
             for _, country_row in country_df.iterrows()
-            for week in range(
+            for week in get_week_range(
                 int(country_row["min_week"]),
-                int(country_row["max_week"]) + 1
+                int(country_row["max_week"])
             )
         }
     )
@@ -3090,9 +3086,9 @@ def server(
             )
 
 
-            for other_week in range(
+            for other_week in get_week_range(
                 min_week,
-                max_week + 1
+                max_week
             ):
 
                 if other_week == week:
@@ -3156,9 +3152,9 @@ def server(
         {
             week
             for _, country_row in country_df.iterrows()
-            for week in range(
+            for week in get_week_range(
                 int(country_row["min_week"]),
-                int(country_row["max_week"]) + 1
+                int(country_row["max_week"])
             )
         }
     )
@@ -3239,9 +3235,9 @@ def server(
             )
 
 
-            for week in range(
+            for week in get_week_range(
                 min_week,
-                max_week + 1
+                max_week
             ):
 
                 try:
@@ -3436,9 +3432,9 @@ def server(
             # READ RAW WEEK INPUTS
             # =================================================
 
-            for week in range(
+            for week in get_week_range(
                 min_week,
-                max_week + 1
+                max_week
             ):
 
                 value = getattr(
@@ -3852,9 +3848,9 @@ def server(
             )
 
 
-            for week in range(
+            for week in get_week_range(
                 min_week,
-                max_week + 1
+                max_week
             ):
 
                 try:
@@ -3991,9 +3987,9 @@ def server(
                 replenishment_week
             ).strip()
 
-            for week in range(
+            for week in get_week_range(
                 min_week,
-                max_week + 1
+                max_week
             ):
 
                 value = getattr(
