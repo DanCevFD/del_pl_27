@@ -1553,6 +1553,7 @@ app_ui = ui.page_fluid(
             width: 100%;
             overflow-x: auto;
             margin-top: 25px;
+            position: relative;
         }
 
         .scenario-table + .scenario-table {
@@ -1720,6 +1721,91 @@ app_ui = ui.page_fluid(
             background-color: #f8f8f8;
             color: #555;
             font-size: 12px;
+        }
+
+        /* ====================================================
+           FIXED TABLE COLUMNS
+           ==================================================== */
+
+        .delivery-table th:nth-child(1),
+        .delivery-table td:nth-child(1) {
+            position: sticky;
+            left: 0;
+            z-index: 4;
+            background-color: #f0f1f3;
+        }
+
+        .delivery-table th:nth-child(2),
+        .delivery-table td:nth-child(2) {
+            position: sticky;
+            left: 150px;
+            z-index: 4;
+            background-color: #f0f1f3;
+        }
+
+        .delivery-table th:nth-child(3),
+        .delivery-table td:nth-child(3) {
+            position: sticky;
+            left: 290px;
+            z-index: 4;
+            background-color: #f0f1f3;
+        }
+
+        .delivery-table th:nth-child(4),
+        .delivery-table td:nth-child(4) {
+            position: sticky;
+            left: 342px;
+            z-index: 4;
+            background-color: #f0f1f3;
+        }
+
+        .delivery-table th:nth-last-child(2),
+        .delivery-table td:nth-last-child(2) {
+            position: sticky;
+            right: 135px;
+            z-index: 4;
+            background-color: #eeeeee;
+        }
+
+        .delivery-table th:nth-last-child(1),
+        .delivery-table td:nth-last-child(1) {
+            position: sticky;
+            right: 0;
+            z-index: 4;
+            background-color: white;
+        }
+
+        .delivery-table thead th {
+            z-index: 5;
+        }
+
+        .delivery-table .month-header {
+            background-color: #fafafa !important;
+        }
+
+        .delivery-table th:nth-last-child(2) {
+            background-color: #f0f1f3 !important;
+        }
+
+        .delivery-table td:nth-last-child(2) {
+            background-color: #eeeeee !important;
+        }
+
+        .delivery-table th:nth-last-child(1) {
+            background-color: #f0f1f3 !important;
+        }
+
+        .delivery-table td:nth-last-child(1) {
+            background-color: white !important;
+        }
+
+        .delivery-table td.blocked-cell {
+            background-color: #eeeeee;
+        }
+
+        .delivery-table tr.percentage-row td:nth-last-child(2),
+        .delivery-table tr.percentage-row td:nth-last-child(1) {
+            background-color: #f8f8f8 !important;
         }
 
         .send-controls {
@@ -3475,11 +3561,13 @@ def server(
                 rows.append(
 
                     {
+
                         "week":
                             week,
 
                         "qty":
                             numeric_value
+
                     }
 
                 )
