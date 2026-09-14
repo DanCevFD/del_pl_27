@@ -1,3 +1,4 @@
+
 from shiny import App, ui, render, reactive, Inputs, Outputs, Session
 import pandas as pd
 import re
@@ -259,6 +260,7 @@ def get_month_for_week(
         min_date
     )
 
+    # ISO year belonging to the country's minimum date
     base_year = int(
         min_date.isocalendar().year
     )
@@ -266,6 +268,20 @@ def get_month_for_week(
     normalized_week = normalize_week(
         week
     )
+
+    # --------------------------------------------------------
+    # Detect crossing from W52 back to W1.
+    #
+    # Example:
+    #
+    # min_week = 50
+    # max_week = 54
+    #
+    # displayed:
+    # W50 W51 W52 W1 W2
+    #
+    # W1 and W2 belong to the following ISO year.
+    # --------------------------------------------------------
 
     if original_min_week is not None:
 
@@ -1013,6 +1029,11 @@ app_ui = ui.page_fluid(
                     "‹";
 
 
+                /*
+                 * Do not allow browsing to a month before
+                 * the current month.
+                 */
+
                 previousButton.disabled =
                     isCurrentMonth();
 
@@ -1038,6 +1059,11 @@ app_ui = ui.page_fluid(
 
                             pickerYear--;
                         }
+
+                        /*
+                         * Safety check so the picker can never
+                         * move before the current month.
+                         */
 
                         if (
                             isBeforeCurrentMonth()
@@ -1198,6 +1224,13 @@ app_ui = ui.page_fluid(
                     );
 
 
+                /*
+                 * Keep the existing display of weeks, except
+                 * that the current ISO week is allowed to appear
+                 * even when its Monday falls in the previous
+                 * calendar month.
+                 */
+
                 if (
                     monday.getMonth() !==
                     pickerMonth
@@ -1222,6 +1255,12 @@ app_ui = ui.page_fluid(
                     monday <= lastDay
                 ) {
 
+                    /*
+                     * Keep the current week if it started in the
+                     * previous month. For all other weeks,
+                     * preserve the original month filtering.
+                     */
+
                     const isCurrentWeek =
                         monday.getTime() ===
                         currentWeekMonday.getTime();
@@ -1239,6 +1278,12 @@ app_ui = ui.page_fluid(
                         break;
                     }
 
+
+                    /*
+                     * This is the actual restriction:
+                     * never display a week before today's
+                     * ISO week.
+                     */
 
                     if (
                         monday >=
@@ -1505,13 +1550,9 @@ app_ui = ui.page_fluid(
             max-width: 500px;
         }
 
-        /* ====================================================
-           SCENARIO TABLE LAYOUT
-           ==================================================== */
-
         .delivery-table-wrapper {
             width: 100%;
-            overflow: hidden;
+            overflow-x: auto;
             margin-top: 25px;
             position: relative;
         }
@@ -1520,80 +1561,12 @@ app_ui = ui.page_fluid(
             margin-top: 35px;
         }
 
-        .delivery-table-layout {
-            width: 100%;
-            display: grid;
-            grid-template-columns: 422px minmax(0, 1fr) 197px;
-            align-items: stretch;
-            overflow: hidden;
-        }
-
-        .delivery-table-fixed-left {
-            width: 422px;
-            min-width: 422px;
-            overflow: hidden;
-            position: relative;
-            z-index: 10;
-            background: white;
-        }
-
-        .delivery-table-week-scroll {
-            min-width: 0;
-            width: 100%;
-            overflow-x: auto;
-            overflow-y: hidden;
-            position: relative;
-            z-index: 2;
-        }
-
-        .delivery-table-fixed-right {
-            width: 197px;
-            min-width: 197px;
-            overflow: hidden;
-            position: relative;
-            z-index: 10;
-            background: white;
-        }
-
-        .delivery-table-week-scroll::-webkit-scrollbar {
-            height: 14px;
-        }
-
-        .delivery-table-week-scroll::-webkit-scrollbar-track {
-            background: #f0f1f3;
-        }
-
-        .delivery-table-week-scroll::-webkit-scrollbar-thumb {
-            background: #bdbfc2;
-            border-radius: 7px;
-            border: 3px solid #f0f1f3;
-        }
-
-        .delivery-table-week-scroll::-webkit-scrollbar-thumb:hover {
-            background: #9fa1a5;
-        }
-
         .delivery-table {
             border-collapse: collapse;
             width: auto;
-            min-width: 0;
+            min-width: 800px;
             table-layout: fixed;
             font-size: 13px;
-        }
-
-        .delivery-table-left {
-            width: 422px;
-            min-width: 422px;
-        }
-
-        .delivery-table-weeks {
-            width: max-content;
-            min-width: 0;
-        }
-
-        .delivery-table-right {
-            width: 197px;
-            min-width: 197px;
         }
 
         .delivery-table th {
@@ -1612,91 +1585,41 @@ app_ui = ui.page_fluid(
             white-space: nowrap;
         }
 
-        .delivery-table-left th:nth-child(1),
-        .delivery-table-left td:nth-child(1) {
+        .delivery-table th:nth-child(1),
+        .delivery-table td:nth-child(1) {
             width: 150px;
             min-width: 150px;
             max-width: 150px;
         }
 
-        .delivery-table-left th:nth-child(2),
-        .delivery-table-left td:nth-child(2) {
+        .delivery-table th:nth-child(2),
+        .delivery-table td:nth-child(2) {
             width: 140px;
             min-width: 140px;
             max-width: 140px;
         }
 
-        .delivery-table-left th:nth-child(3),
-        .delivery-table-left td:nth-child(3) {
+        .delivery-table th:nth-child(3),
+        .delivery-table td:nth-child(3) {
             width: 52px;
             min-width: 52px;
             max-width: 52px;
         }
 
-        .delivery-table-left th:nth-child(4),
-        .delivery-table-left td:nth-child(4) {
+        .delivery-table th:nth-child(4),
+        .delivery-table td:nth-child(4) {
             width: 80px;
             min-width: 80px;
             max-width: 80px;
         }
 
-        .delivery-table-weeks th,
-        .delivery-table-weeks td {
+        .delivery-table th:nth-child(n+5),
+        .delivery-table td:nth-child(n+5) {
             width: 62px;
             min-width: 62px;
             max-width: 62px;
             padding-left: 2px;
             padding-right: 2px;
-        }
-
-        .delivery-table-right th:nth-child(1),
-        .delivery-table-right td:nth-child(1) {
-            width: 62px;
-            min-width: 62px;
-            max-width: 62px;
-        }
-
-        .delivery-table-right th:nth-child(2),
-        .delivery-table-right td:nth-child(2) {
-            width: 135px;
-            min-width: 135px;
-            max-width: 135px;
-        }
-
-        .delivery-table-fixed-left {
-            border-right: 1px solid #b8babd;
-        }
-
-        .delivery-table-fixed-right {
-            border-left: 1px solid #b8babd;
-        }
-
-        .delivery-table-fixed-left .delivery-table {
-            border-right: 1px solid #b8babd;
-        }
-
-        .delivery-table-fixed-right .delivery-table {
-            border-left: 1px solid #b8babd;
-        }
-
-        .delivery-table th:nth-child(1),
-        .delivery-table td:nth-child(1) {
-            background-color: #f0f1f3;
-        }
-
-        .delivery-table th:nth-child(2),
-        .delivery-table td:nth-child(2) {
-            background-color: #f0f1f3;
-        }
-
-        .delivery-table th:nth-child(3),
-        .delivery-table td:nth-child(3) {
-            background-color: #f0f1f3;
-        }
-
-        .delivery-table th:nth-child(4),
-        .delivery-table td:nth-child(4) {
-            background-color: #f0f1f3;
         }
 
         .delivery-table th.replenishment-header,
@@ -1801,16 +1724,89 @@ app_ui = ui.page_fluid(
             font-size: 12px;
         }
 
+        /* ====================================================
+           FIXED TABLE COLUMNS
+           ==================================================== */
+
+        .delivery-table th:nth-child(1),
+        .delivery-table td:nth-child(1) {
+            position: sticky;
+            left: 0;
+            z-index: 4;
+            background-color: #f0f1f3;
+        }
+
+        .delivery-table th:nth-child(2),
+        .delivery-table td:nth-child(2) {
+            position: sticky;
+            left: 150px;
+            z-index: 4;
+            background-color: #f0f1f3;
+        }
+
+        .delivery-table th:nth-child(3),
+        .delivery-table td:nth-child(3) {
+            position: sticky;
+            left: 290px;
+            z-index: 4;
+            background-color: #f0f1f3;
+        }
+
+        .delivery-table th:nth-child(4),
+        .delivery-table td:nth-child(4) {
+            position: sticky;
+            left: 342px;
+            z-index: 4;
+            background-color: #f0f1f3;
+        }
+
+        .delivery-table th:nth-last-child(2),
+        .delivery-table td:nth-last-child(2) {
+            position: sticky;
+            right: 135px;
+            z-index: 4;
+            background-color: #eeeeee;
+        }
+
+        .delivery-table th:nth-last-child(1),
+        .delivery-table td:nth-last-child(1) {
+            position: sticky;
+            right: 0;
+            z-index: 4;
+            background-color: white;
+        }
+
+        .delivery-table thead th {
+            z-index: 5;
+        }
+
         .delivery-table .month-header {
             background-color: #fafafa !important;
+        }
+
+        .delivery-table th:nth-last-child(2) {
+            background-color: #f0f1f3 !important;
+        }
+
+        .delivery-table td:nth-last-child(2) {
+            background-color: #eeeeee !important;
+        }
+
+        .delivery-table th:nth-last-child(1) {
+            background-color: #f0f1f3 !important;
+        }
+
+        .delivery-table td:nth-last-child(1) {
+            background-color: white !important;
         }
 
         .delivery-table td.blocked-cell {
             background-color: #eeeeee;
         }
 
-        .delivery-table tr.percentage-row td {
-            background-color: #f8f8f8;
+        .delivery-table tr.percentage-row td:nth-last-child(2),
+        .delivery-table tr.percentage-row td:nth-last-child(1) {
+            background-color: #f8f8f8 !important;
         }
 
         .send-controls {
@@ -2297,6 +2293,14 @@ def server(
             ]
         )
 
+        # ----------------------------------------------------
+        # IMPORTANT:
+        # Keep the ORIGINAL week numbers internally because
+        # these are the IDs of the inputs.
+        #
+        # Only the displayed week number is normalized.
+        # ----------------------------------------------------
+
         raw_weeks = get_week_range(
             min_week,
             max_week
@@ -2348,47 +2352,10 @@ def server(
 
 
         # ====================================================
-        # LEFT TABLE
+        # WEEK HEADER
         # ====================================================
 
-        left_month_row = [
-
-            ui.tags.th(
-                "",
-                {
-                    "class":
-                        "month-header"
-                }
-            ),
-
-            ui.tags.th(
-                "",
-                {
-                    "class":
-                        "month-header"
-                }
-            ),
-
-            ui.tags.th(
-                "",
-                {
-                    "class":
-                        "month-header"
-                }
-            ),
-
-            ui.tags.th(
-                "",
-                {
-                    "class":
-                        "month-header"
-                }
-            )
-
-        ]
-
-
-        left_header_row = [
+        header_cells = [
 
             ui.tags.th(
                 "Scenario"
@@ -2410,8 +2377,128 @@ def server(
 
         ]
 
+        for display_week in display_weeks:
 
-        left_quantity_row = [
+            header_cells.append(
+
+                ui.tags.th(
+                    f"W{display_week}"
+                )
+
+            )
+
+
+        header_cells.append(
+
+            ui.tags.th(
+                "Total"
+            )
+
+        )
+
+
+        header_cells.append(
+
+            ui.tags.th(
+                ui.HTML(
+                    "Replenishment<br>week"
+                ),
+                {
+                    "class":
+                        "replenishment-header"
+                }
+            )
+
+        )
+
+
+        # ====================================================
+        # MONTH ROW
+        # ====================================================
+
+        month_row = [
+
+            ui.tags.th(
+                "",
+                {
+                    "class":
+                        "month-header"
+                }
+            ),
+
+            ui.tags.th(
+                "",
+                {
+                    "class":
+                        "month-header"
+                }
+            ),
+
+            ui.tags.th(
+                "",
+                {
+                    "class":
+                        "month-header"
+                }
+            ),
+
+            ui.tags.th(
+                "",
+                {
+                    "class":
+                        "month-header"
+                }
+            )
+
+        ]
+
+        for month in month_cells:
+
+            month_row.append(
+
+                ui.tags.th(
+                    month,
+                    {
+                        "class":
+                            "month-header"
+                    }
+
+                )
+
+            )
+
+
+        month_row.append(
+
+            ui.tags.th(
+                "",
+                {
+                    "class":
+                        "month-header"
+                }
+            )
+
+        )
+
+
+        month_row.append(
+
+            ui.tags.th(
+                "",
+                {
+                    "class":
+                        "month-header replenishment-header"
+                }
+            )
+
+        )
+
+
+        # ====================================================
+        # QUANTITY ROW
+        # ====================================================
+
+        quantity_cells = [
 
             ui.tags.td(
                 scenario_label,
@@ -2449,105 +2536,16 @@ def server(
         ]
 
 
-        left_percentage_row = [
-
-            ui.tags.td(
-                ""
-            ),
-
-            ui.tags.td(
-                ""
-            ),
-
-            ui.tags.td(
-                ""
-            ),
-
-            ui.tags.td(
-                ""
-            )
-
-        ]
-
-
-        left_table = ui.tags.table(
-
-            {
-                "class":
-                    "delivery-table delivery-table-left"
-            },
-
-            ui.tags.thead(
-
-                ui.tags.tr(
-                    left_month_row
-                ),
-
-                ui.tags.tr(
-                    left_header_row
-                )
-
-            ),
-
-            ui.tags.tbody(
-
-                ui.tags.tr(
-                    left_quantity_row
-                ),
-
-                ui.tags.tr(
-                    {
-                        "class":
-                            "percentage-row"
-                    },
-
-                    left_percentage_row
-                )
-
-            )
-
-        )
-
-
-        # ====================================================
-        # WEEK TABLE
-        # ====================================================
-
-        week_month_row = []
-
-        for month in month_cells:
-
-            week_month_row.append(
-
-                ui.tags.th(
-                    month,
-                    {
-                        "class":
-                            "month-header"
-                    }
-                )
-
-            )
-
-
-        week_header_row = []
-
-        for display_week in display_weeks:
-
-            week_header_row.append(
-
-                ui.tags.th(
-                    f"W{display_week}"
-                )
-
-            )
-
-
-        week_quantity_row = []
+        # ----------------------------------------------------
+        # IMPORTANT:
+        # Inputs use RAW weeks, not normalized display weeks.
+        # Example: raw 53 -> input ID scenario_week_53,
+        # while the visible header says W1.
+        # ----------------------------------------------------
 
         for week in raw_weeks:
 
-            week_quantity_row.append(
+            quantity_cells.append(
 
                 ui.tags.td(
 
@@ -2561,107 +2559,11 @@ def server(
             )
 
 
-        week_percentage_row = []
-
-        for week in raw_weeks:
-
-            week_percentage_row.append(
-
-                ui.tags.td(
-
-                    ui.output_text(
-                        f"{scenario}_percent_{week}"
-                    )
-
-                )
-
-            )
-
-
-        week_table = ui.tags.table(
-
-            {
-                "class":
-                    "delivery-table delivery-table-weeks"
-            },
-
-            ui.tags.thead(
-
-                ui.tags.tr(
-                    week_month_row
-                ),
-
-                ui.tags.tr(
-                    week_header_row
-                )
-
-            ),
-
-            ui.tags.tbody(
-
-                ui.tags.tr(
-                    week_quantity_row
-                ),
-
-                ui.tags.tr(
-                    {
-                        "class":
-                            "percentage-row"
-                    },
-
-                    week_percentage_row
-                )
-
-            )
-
-        )
-
-
         # ====================================================
-        # RIGHT TABLE
+        # TOTAL
         # ====================================================
 
-        right_month_row = [
-
-            ui.tags.th(
-                "",
-                {
-                    "class":
-                        "month-header"
-                }
-            ),
-
-            ui.tags.th(
-                "",
-                {
-                    "class":
-                        "month-header replenishment-header"
-                }
-            )
-
-        ]
-
-
-        right_header_row = [
-
-            ui.tags.th(
-                "Total"
-            ),
-
-            ui.tags.th(
-                ui.HTML(
-                    "Replenishment<br>week"
-                ),
-                {
-                    "class":
-                        "replenishment-header"
-                }
-            )
-
-        ]
-
-
-        right_quantity_row = [
+        quantity_cells.append(
 
             ui.tags.td(
 
@@ -2674,7 +2576,16 @@ def server(
                         "total-cell"
                 }
 
-            ),
+            )
+
+        )
+
+
+        # ====================================================
+        # REPLENISHMENT WEEK
+        # ====================================================
+
+        quantity_cells.append(
 
             ui.tags.td(
 
@@ -2706,14 +2617,59 @@ def server(
 
             )
 
+        )
+
+
+        # ====================================================
+        # PERCENTAGE ROW
+        # ====================================================
+
+        percentage_cells = [
+
+            ui.tags.td(
+                ""
+            ),
+
+            ui.tags.td(
+                ""
+            ),
+
+            ui.tags.td(
+                ""
+            ),
+
+            ui.tags.td(
+                ""
+            )
+
         ]
 
 
-        right_percentage_row = [
+        for week in raw_weeks:
+
+            percentage_cells.append(
+
+                ui.tags.td(
+
+                    ui.output_text(
+                        f"{scenario}_percent_{week}"
+                    )
+
+                )
+
+            )
+
+
+        percentage_cells.append(
 
             ui.tags.td(
                 "100%"
-            ),
+            )
+
+        )
+
+
+        percentage_cells.append(
 
             ui.tags.td(
                 "",
@@ -2723,24 +2679,28 @@ def server(
                 }
             )
 
-        ]
+        )
 
 
-        right_table = ui.tags.table(
+        # ====================================================
+        # TABLE
+        # ====================================================
+
+        table = ui.tags.table(
 
             {
                 "class":
-                    "delivery-table delivery-table-right"
+                    "delivery-table"
             },
 
             ui.tags.thead(
 
                 ui.tags.tr(
-                    right_month_row
+                    month_row
                 ),
 
                 ui.tags.tr(
-                    right_header_row
+                    header_cells
                 )
 
             ),
@@ -2748,7 +2708,7 @@ def server(
             ui.tags.tbody(
 
                 ui.tags.tr(
-                    right_quantity_row
+                    quantity_cells
                 ),
 
                 ui.tags.tr(
@@ -2757,7 +2717,7 @@ def server(
                             "percentage-row"
                     },
 
-                    right_percentage_row
+                    percentage_cells
                 )
 
             )
@@ -2765,51 +2725,7 @@ def server(
         )
 
 
-        # ====================================================
-        # COMBINED TABLE LAYOUT
-        # ====================================================
-
-        return ui.div(
-
-            {
-                "class":
-                    "delivery-table-layout"
-            },
-
-            ui.div(
-
-                {
-                    "class":
-                        "delivery-table-fixed-left"
-                },
-
-                left_table
-
-            ),
-
-            ui.div(
-
-                {
-                    "class":
-                        "delivery-table-week-scroll"
-                },
-
-                week_table
-
-            ),
-
-            ui.div(
-
-                {
-                    "class":
-                        "delivery-table-fixed-right"
-                },
-
-                right_table
-
-            )
-
-        )
+        return table
 
 
     # ========================================================
@@ -2957,6 +2873,9 @@ def server(
 
             total = 0
 
+            # Keep RAW weeks here because these are the
+            # actual Shiny input IDs.
+
             for week in get_week_range(
                 min_week,
                 max_week
@@ -3045,6 +2964,9 @@ def server(
 
             total = 0
 
+            # Use RAW week numbers because these are the
+            # actual Shiny input IDs.
+
             for raw_week in get_week_range(
                 min_week,
                 max_week
@@ -3075,6 +2997,8 @@ def server(
 
                     continue
 
+
+            # Current RAW week
 
             try:
 
@@ -3115,6 +3039,15 @@ def server(
 
         return percentage
 
+
+    # --------------------------------------------------------
+    # Register a renderer for every RAW week that can occur
+    # in the CSV.
+    #
+    # This is important because the visible week can be
+    # normalized (e.g. raw 53 -> W1), but the Shiny input ID
+    # remains scenario_week_53.
+    # --------------------------------------------------------
 
     all_raw_weeks = sorted(
         {
@@ -3166,6 +3099,11 @@ def server(
 
                 return
 
+
+            # ------------------------------------------------
+            # ORD
+            # ------------------------------------------------
+
             ord_value = country.get(
                 "ord"
             )
@@ -3187,6 +3125,11 @@ def server(
             except Exception:
 
                 return
+
+
+            # ------------------------------------------------
+            # CURRENT VALUE
+            # ------------------------------------------------
 
             current_value = getattr(
                 input,
@@ -3210,6 +3153,10 @@ def server(
                 current_value
             )
 
+
+            # ------------------------------------------------
+            # OTHER WEEKS
+            # ------------------------------------------------
 
             other_total = 0
 
@@ -3279,6 +3226,15 @@ def server(
         return limit_week
 
 
+    # --------------------------------------------------------
+    # Register the limiter for every RAW week that can occur
+    # in the CSV.
+    #
+    # This is important because the visible week can be
+    # normalized (e.g. raw 53 -> W1), but the Shiny input ID
+    # remains scenario_week_53.
+    # --------------------------------------------------------
+
     all_raw_weeks = sorted(
         {
             week
@@ -3328,6 +3284,14 @@ def server(
 
             return
 
+
+        # ====================================================
+        # BUTTON VALIDATION
+        # ====================================================
+        # Both scenarios must contain:
+        # 1. At least one quantity in a week column.
+        # 2. A replenishment week value.
+        # ====================================================
 
         scenario_has_week_value = {
             "ideal": False,
@@ -3471,6 +3435,10 @@ def server(
             return
 
 
+        # ====================================================
+        # ORD
+        # ====================================================
+
         ord_value = country.get(
             "ord"
         )
@@ -3489,6 +3457,10 @@ def server(
                 )
             )
 
+
+        # ====================================================
+        # BUILD SCENARIO DATA
+        # ====================================================
 
         all_output_rows = []
 
@@ -3517,6 +3489,10 @@ def server(
             total = 0
 
 
+            # =================================================
+            # REPLENISHMENT WEEK
+            # =================================================
+
             replenishment_week = ""
 
             try:
@@ -3538,6 +3514,10 @@ def server(
                 replenishment_week
             ).strip()
 
+
+            # =================================================
+            # READ RAW WEEK INPUTS
+            # =================================================
 
             for week in get_week_range(
                 min_week,
@@ -3594,6 +3574,10 @@ def server(
                 )
 
 
+            # =================================================
+            # ORD CHECK
+            # =================================================
+
             if (
                 ord_value is not None
                 and total > ord_value
@@ -3612,6 +3596,10 @@ def server(
                 return
 
 
+            # =================================================
+            # REQUIRE QUANTITY
+            # =================================================
+
             if total <= 0:
 
                 status_type.set(
@@ -3626,6 +3614,10 @@ def server(
                 return
 
 
+            # =================================================
+            # BUILD OUTPUT
+            # =================================================
+
             output_rows = []
 
 
@@ -3638,6 +3630,10 @@ def server(
                 qty = row[
                     "qty"
                 ]
+
+
+                # Display/output the REAL ISO week number,
+                # not the raw wrapped value.
 
                 display_week = normalize_week(
                     raw_week
@@ -3903,6 +3899,14 @@ def server(
 
             return
 
+
+        # ====================================================
+        # BUTTON VALIDATION
+        # ====================================================
+        # Both scenarios must contain:
+        # 1. At least one quantity in a week column.
+        # 2. A replenishment week value.
+        # ====================================================
 
         scenario_has_week_value = {
             "ideal": False,
