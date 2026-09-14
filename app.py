@@ -1501,30 +1501,30 @@ app_ui = ui.page_fluid(
         """),
 
         # ====================================================
-        # WEEK-ONLY HORIZONTAL SCROLLBAR JAVASCRIPT
+        # WEEKS-ONLY HORIZONTAL SCROLLBAR
         # ====================================================
 
         ui.tags.script("""
 
         (function() {
 
-            const LEFT_FIXED_WIDTH = 422;
-            const RIGHT_FIXED_WIDTH = 197;
+            const LEFT_WIDTH = 422;
+            const RIGHT_WIDTH = 197;
+            const SCROLLBAR_HEIGHT = 14;
 
-            const SCROLLBAR_CLASS =
-                "week-only-scrollbar";
-
-            const scrollbars = new Map();
+            const scrollbarElements = new Map();
 
 
             function createScrollbar(wrapper) {
 
                 if (
-                    !wrapper ||
-                    scrollbars.has(wrapper)
+                    scrollbarElements.has(wrapper)
                 ) {
 
-                    return;
+                    return scrollbarElements.get(
+                        wrapper
+                    );
+
                 }
 
 
@@ -1534,48 +1534,73 @@ app_ui = ui.page_fluid(
                     );
 
                 scrollbar.className =
-                    SCROLLBAR_CLASS;
+                    "weeks-only-scrollbar";
 
 
-                const content =
+                const inner =
                     document.createElement(
                         "div"
                     );
 
-                content.className =
-                    "week-only-scrollbar-content";
+                inner.className =
+                    "weeks-only-scrollbar-inner";
 
 
                 scrollbar.appendChild(
-                    content
+                    inner
                 );
-
 
                 document.body.appendChild(
                     scrollbar
                 );
 
 
-                let syncing = false;
+                const state = {
+
+                    scrollbar:
+                        scrollbar,
+
+                    inner:
+                        inner,
+
+                    syncing:
+                        false
+
+                };
+
+
+                scrollbarElements.set(
+                    wrapper,
+                    state
+                );
 
 
                 scrollbar.addEventListener(
                     "scroll",
                     function() {
 
-                        if (syncing) {
+                        if (
+                            state.syncing
+                        ) {
+
                             return;
+
                         }
 
-                        syncing = true;
+
+                        state.syncing =
+                            true;
+
 
                         wrapper.scrollLeft =
                             scrollbar.scrollLeft;
 
+
                         requestAnimationFrame(
                             function() {
 
-                                syncing = false;
+                                state.syncing =
+                                    false;
 
                             }
                         );
@@ -1588,45 +1613,38 @@ app_ui = ui.page_fluid(
                     "scroll",
                     function() {
 
-                        if (syncing) {
+                        if (
+                            state.syncing
+                        ) {
+
                             return;
+
                         }
 
-                        syncing = true;
+
+                        state.syncing =
+                            true;
+
 
                         scrollbar.scrollLeft =
                             wrapper.scrollLeft;
 
+
                         requestAnimationFrame(
                             function() {
 
-                                syncing = false;
+                                state.syncing =
+                                    false;
 
                             }
                         );
 
-                    },
-                    {
-                        passive: true
                     }
                 );
 
 
-                scrollbars.set(
-                    wrapper,
-                    {
-                        scrollbar:
-                            scrollbar,
+                return state;
 
-                        content:
-                            content
-                    }
-                );
-
-
-                updateScrollbar(
-                    wrapper
-                );
             }
 
 
@@ -1634,26 +1652,44 @@ app_ui = ui.page_fluid(
                 wrapper
             ) {
 
-                const entry =
-                    scrollbars.get(
-                        wrapper
-                    );
-
-
                 if (
-                    !entry ||
+                    !wrapper ||
                     !wrapper.isConnected
                 ) {
 
                     return;
+
                 }
 
 
-                const scrollbar =
-                    entry.scrollbar;
+                const table =
+                    wrapper.querySelector(
+                        ".delivery-table"
+                    );
 
-                const content =
-                    entry.content;
+
+                if (!table) {
+
+                    return;
+
+                }
+
+
+                const state =
+                    createScrollbar(
+                        wrapper
+                    );
+
+
+                const scrollbar =
+                    state.scrollbar;
+
+                const inner =
+                    state.inner;
+
+
+                const wrapperRect =
+                    wrapper.getBoundingClientRect();
 
 
                 const scrollWidth =
@@ -1663,182 +1699,121 @@ app_ui = ui.page_fluid(
                     wrapper.clientWidth;
 
 
-                const hasOverflow =
-                    scrollWidth >
-                    clientWidth + 1;
-
-
-                if (!hasOverflow) {
-
-                    scrollbar.style.display =
-                        "none";
-
-                    return;
-                }
-
-
-                const rect =
-                    wrapper.getBoundingClientRect();
-
-
-                /*
-                 * The first four columns are:
-                 *
-                 * Scenario       150px
-                 * DESTINATION    140px
-                 * DST             52px
-                 * Forecast        80px
-                 *
-                 * Total = 422px
-                 */
-
-                const leftWidth =
-                    LEFT_FIXED_WIDTH;
-
-
-                /*
-                 * The two fixed right columns are:
-                 *
-                 * Total            62px
-                 * Replenishment   135px
-                 *
-                 * Total = 197px
-                 */
-
-                const rightWidth =
-                    RIGHT_FIXED_WIDTH;
-
-
-                const trackWidth =
+                const maxScroll =
                     Math.max(
                         0,
-                        clientWidth -
-                        leftWidth -
-                        rightWidth
+                        scrollWidth -
+                        clientWidth
                     );
 
 
                 if (
-                    trackWidth <= 0
+                    maxScroll <= 0
                 ) {
 
                     scrollbar.style.display =
                         "none";
 
                     return;
+
                 }
 
 
-                /*
-                 * offsetHeight includes the native
-                 * horizontal scrollbar.
-                 *
-                 * clientHeight excludes it.
-                 *
-                 * Therefore this gives us the actual
-                 * scrollbar gutter height.
-                 */
+                const tableWidth =
+                    table.getBoundingClientRect().width;
 
-                let nativeScrollbarHeight =
-                    wrapper.offsetHeight -
-                    wrapper.clientHeight;
+
+                const weeksWidth =
+                    Math.max(
+                        0,
+                        Math.min(
+                            clientWidth -
+                            LEFT_WIDTH -
+                            RIGHT_WIDTH,
+                            tableWidth -
+                            LEFT_WIDTH -
+                            RIGHT_WIDTH
+                        )
+                    );
 
 
                 if (
-                    nativeScrollbarHeight < 10
+                    weeksWidth <= 0
                 ) {
 
-                    nativeScrollbarHeight =
-                        14;
+                    scrollbar.style.display =
+                        "none";
+
+                    return;
+
                 }
 
 
-                /*
-                 * Position the custom scrollbar exactly
-                 * inside the native scrollbar gutter.
-                 *
-                 * This is deliberately NOT positioned
-                 * over the percentage row.
-                 */
+                scrollbar.style.display =
+                    "block";
 
                 scrollbar.style.position =
                     "fixed";
 
                 scrollbar.style.left =
                     (
-                        rect.left +
-                        leftWidth
+                        wrapperRect.left +
+                        LEFT_WIDTH
                     ) + "px";
 
                 scrollbar.style.top =
                     (
-                        rect.top +
+                        wrapperRect.top +
                         wrapper.clientHeight
                     ) + "px";
 
                 scrollbar.style.width =
-                    trackWidth + "px";
+                    weeksWidth + "px";
 
                 scrollbar.style.height =
-                    nativeScrollbarHeight + "px";
+                    SCROLLBAR_HEIGHT + "px";
 
 
                 /*
-                 * The fake scrollbar needs enough hidden
-                 * width to create the same scroll range
-                 * as the real table.
+                 * The fake scrollbar has exactly the same
+                 * horizontal scroll range as the real table.
                  */
 
-                const maximumScroll =
-                    scrollWidth -
-                    clientWidth;
-
-
-                content.style.width =
+                inner.style.width =
                     (
-                        trackWidth +
-                        maximumScroll
+                        weeksWidth +
+                        maxScroll
                     ) + "px";
 
-
-                content.style.height =
+                inner.style.height =
                     "1px";
 
 
-                scrollbar.scrollLeft =
-                    wrapper.scrollLeft;
+                if (
+                    !state.syncing
+                ) {
 
+                    state.syncing =
+                        true;
 
-                scrollbar.style.display =
-                    "block";
+                    scrollbar.scrollLeft =
+                        wrapper.scrollLeft;
+
+                    requestAnimationFrame(
+                        function() {
+
+                            state.syncing =
+                                false;
+
+                        }
+                    );
+
+                }
+
             }
 
 
-            function updateAllScrollbars() {
-
-                scrollbars.forEach(
-                    function(entry, wrapper) {
-
-                        if (
-                            !wrapper.isConnected
-                        ) {
-
-                            entry.scrollbar.remove();
-
-                            scrollbars.delete(
-                                wrapper
-                            );
-
-                            return;
-                        }
-
-
-                        updateScrollbar(
-                            wrapper
-                        );
-                    }
-                );
-
+            function updateAll() {
 
                 document
                     .querySelectorAll(
@@ -1847,54 +1822,35 @@ app_ui = ui.page_fluid(
                     .forEach(
                         function(wrapper) {
 
-                            if (
-                                !scrollbars.has(
-                                    wrapper
-                                )
-                            ) {
-
-                                createScrollbar(
-                                    wrapper
-                                );
-
-                            }
-
-                            else {
-
-                                updateScrollbar(
-                                    wrapper
-                                );
-                            }
+                            updateScrollbar(
+                                wrapper
+                            );
 
                         }
                     );
-            }
 
 
-            let updateScheduled =
-                false;
+                scrollbarElements.forEach(
+                    function(
+                        state,
+                        wrapper
+                    ) {
 
+                        if (
+                            !wrapper.isConnected
+                        ) {
 
-            function scheduleUpdate() {
+                            state.scrollbar.remove();
 
-                if (updateScheduled) {
-                    return;
-                }
+                            scrollbarElements.delete(
+                                wrapper
+                            );
 
-                updateScheduled =
-                    true;
-
-
-                requestAnimationFrame(
-                    function() {
-
-                        updateScheduled =
-                            false;
-
-                        updateAllScrollbars();
+                        }
 
                     }
                 );
+
             }
 
 
@@ -1902,7 +1858,9 @@ app_ui = ui.page_fluid(
                 new MutationObserver(
                     function() {
 
-                        scheduleUpdate();
+                        requestAnimationFrame(
+                            updateAll
+                        );
 
                     }
                 );
@@ -1919,57 +1877,29 @@ app_ui = ui.page_fluid(
 
             window.addEventListener(
                 "resize",
-                function() {
-
-                    scheduleUpdate();
-
-                }
+                updateAll
             );
 
 
             window.addEventListener(
                 "scroll",
-                function() {
-
-                    scheduleUpdate();
-
-                },
-                {
-                    passive: true
-                }
+                updateAll,
+                true
             );
 
 
-            /*
-             * Initial creation.
-             */
-
             setTimeout(
-                function() {
-
-                    updateAllScrollbars();
-
-                },
+                updateAll,
                 100
             );
 
-
             setTimeout(
-                function() {
-
-                    updateAllScrollbars();
-
-                },
+                updateAll,
                 500
             );
 
-
             setTimeout(
-                function() {
-
-                    updateAllScrollbars();
-
-                },
+                updateAll,
                 1000
             );
 
@@ -2031,15 +1961,6 @@ app_ui = ui.page_fluid(
             overflow-x: auto;
             margin-top: 25px;
             position: relative;
-
-            /*
-             * Keep the real scrollbar gutter so that the
-             * custom scrollbar can sit exactly where the
-             * browser scrollbar normally sits.
-             *
-             * The native scrollbar itself is made transparent
-             * below.
-             */
         }
 
         .scenario-table + .scenario-table {
@@ -2437,20 +2358,13 @@ app_ui = ui.page_fluid(
             background-color: #f0f1f3;
         }
 
+
         /* ====================================================
-           WEEK-ONLY SCROLLBAR
+           WEEKS-ONLY HORIZONTAL SCROLLBAR
            ==================================================== */
 
-        /*
-         * Keep the native scrollbar space but make the native
-         * scrollbar itself invisible.
-         *
-         * The actual visible scrollbar is created separately
-         * by the JavaScript above.
-         */
-
         .delivery-table-wrapper {
-            scrollbar-color: transparent transparent;
+            scrollbar-width: none;
         }
 
         .delivery-table-wrapper::-webkit-scrollbar {
@@ -2463,48 +2377,33 @@ app_ui = ui.page_fluid(
 
         .delivery-table-wrapper::-webkit-scrollbar-thumb {
             background: transparent;
-            border: none;
         }
 
-        /*
-         * The custom scrollbar is positioned outside the table
-         * wrapper and directly over the native scrollbar gutter.
-         *
-         * Therefore it cannot cover the percentage row.
-         */
-
-        .week-only-scrollbar {
-            position: fixed;
+        .weeks-only-scrollbar {
+            z-index: 99998;
             overflow-x: auto;
             overflow-y: hidden;
-            z-index: 99998;
             background-color: #f0f1f3;
             box-sizing: border-box;
-            display: none;
-            scrollbar-color: #bdbfc2 #f0f1f3;
             scrollbar-width: auto;
         }
 
-        .week-only-scrollbar::-webkit-scrollbar {
+        .weeks-only-scrollbar::-webkit-scrollbar {
             height: 14px;
         }
 
-        .week-only-scrollbar::-webkit-scrollbar-track {
+        .weeks-only-scrollbar::-webkit-scrollbar-track {
             background-color: #f0f1f3;
         }
 
-        .week-only-scrollbar::-webkit-scrollbar-thumb {
-            background-color: #bdbfc2;
+        .weeks-only-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #bdbdbd;
             border: 3px solid #f0f1f3;
             border-radius: 7px;
-            min-height: 20px;
         }
 
-        .week-only-scrollbar-content {
+        .weeks-only-scrollbar-inner {
             height: 1px;
-            min-height: 1px;
-            padding: 0;
-            margin: 0;
         }
 
         """)
