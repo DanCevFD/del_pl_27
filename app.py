@@ -1501,274 +1501,6 @@ app_ui = ui.page_fluid(
         """),
 
         # ====================================================
-        # WEEK-ONLY SCROLLBAR JAVASCRIPT
-        # ====================================================
-
-        ui.tags.script("""
-
-        (function() {
-
-            const LEFT_FIXED_WIDTH = 422;
-            const RIGHT_FIXED_WIDTH = 197;
-
-
-            function setupWeekOnlyScrollbar(wrapper) {
-
-                if (!wrapper) {
-                    return;
-                }
-
-
-                const table =
-                    wrapper.querySelector(
-                        ".delivery-table"
-                    );
-
-                if (!table) {
-                    return;
-                }
-
-
-                let scrollbar =
-                    wrapper.querySelector(
-                        ".week-only-scrollbar"
-                    );
-
-
-                if (!scrollbar) {
-
-                    scrollbar =
-                        document.createElement(
-                            "div"
-                        );
-
-                    scrollbar.className =
-                        "week-only-scrollbar";
-
-
-                    const inner =
-                        document.createElement(
-                            "div"
-                        );
-
-                    inner.className =
-                        "week-only-scrollbar-inner";
-
-
-                    scrollbar.appendChild(
-                        inner
-                    );
-
-                    wrapper.appendChild(
-                        scrollbar
-                    );
-                }
-
-
-                const inner =
-                    scrollbar.querySelector(
-                        ".week-only-scrollbar-inner"
-                    );
-
-
-                function updateScrollbar() {
-
-                    const wrapperWidth =
-                        wrapper.clientWidth;
-
-                    const tableWidth =
-                        table.scrollWidth;
-
-
-                    const middleWidth =
-                        Math.max(
-                            0,
-                            wrapperWidth -
-                            LEFT_FIXED_WIDTH -
-                            RIGHT_FIXED_WIDTH
-                        );
-
-
-                    const middleContentWidth =
-                        Math.max(
-                            middleWidth,
-                            tableWidth -
-                            LEFT_FIXED_WIDTH -
-                            RIGHT_FIXED_WIDTH
-                        );
-
-
-                    scrollbar.style.left =
-                        LEFT_FIXED_WIDTH + "px";
-
-
-                    scrollbar.style.width =
-                        middleWidth + "px";
-
-
-                    inner.style.width =
-                        middleContentWidth + "px";
-
-
-                    /*
-                     * If the table fits completely in the
-                     * available space, there is no scrollbar.
-                     */
-
-                    if (
-                        tableWidth <=
-                        wrapperWidth
-                    ) {
-
-                        scrollbar.style.display =
-                            "none";
-
-                        wrapper.scrollLeft =
-                            0;
-
-                        return;
-                    }
-
-
-                    scrollbar.style.display =
-                        "block";
-
-
-                    const maxScroll =
-                        Math.max(
-                            0,
-                            tableWidth -
-                            wrapperWidth
-                        );
-
-
-                    if (
-                        scrollbar.scrollLeft >
-                        maxScroll
-                    ) {
-
-                        scrollbar.scrollLeft =
-                            maxScroll;
-                    }
-                }
-
-
-                if (
-                    scrollbar.dataset.connected !==
-                    "true"
-                ) {
-
-                    scrollbar.addEventListener(
-                        "scroll",
-                        function() {
-
-                            if (
-                                wrapper.scrollLeft !==
-                                scrollbar.scrollLeft
-                            ) {
-
-                                wrapper.scrollLeft =
-                                    scrollbar.scrollLeft;
-                            }
-                        }
-                    );
-
-
-                    wrapper.addEventListener(
-                        "scroll",
-                        function() {
-
-                            if (
-                                scrollbar.scrollLeft !==
-                                wrapper.scrollLeft
-                            ) {
-
-                                scrollbar.scrollLeft =
-                                    wrapper.scrollLeft;
-                            }
-                        }
-                    );
-
-
-                    scrollbar.dataset.connected =
-                        "true";
-                }
-
-
-                updateScrollbar();
-            }
-
-
-            function setupAllScrollbars() {
-
-                document
-                    .querySelectorAll(
-                        ".delivery-table-wrapper"
-                    )
-                    .forEach(
-                        setupWeekOnlyScrollbar
-                    );
-            }
-
-
-            const observer =
-                new MutationObserver(
-                    function() {
-
-                        setupAllScrollbars();
-                    }
-                );
-
-
-            observer.observe(
-                document.body,
-                {
-                    childList: true,
-                    subtree: true
-                }
-            );
-
-
-            window.addEventListener(
-                "resize",
-                function() {
-
-                    setupAllScrollbars();
-                }
-            );
-
-
-            document.addEventListener(
-                "DOMContentLoaded",
-                function() {
-
-                    setupAllScrollbars();
-                }
-            );
-
-
-            setTimeout(
-                setupAllScrollbars,
-                100
-            );
-
-
-            setTimeout(
-                setupAllScrollbars,
-                500
-            );
-
-
-            setTimeout(
-                setupAllScrollbars,
-                1000
-            );
-
-        })();
-
-        """),
-
-        # ====================================================
         # CSS
         # ====================================================
 
@@ -1817,58 +1549,11 @@ app_ui = ui.page_fluid(
             max-width: 500px;
         }
 
-        /* ====================================================
-           TABLE SCROLLING
-           ==================================================== */
-
         .delivery-table-wrapper {
             width: 100%;
-            overflow-x: hidden;
+            overflow-x: auto;
             margin-top: 25px;
             position: relative;
-            padding-bottom: 14px;
-            box-sizing: border-box;
-            scrollbar-width: none;
-        }
-
-        .delivery-table-wrapper::-webkit-scrollbar {
-            display: none;
-        }
-
-        .week-only-scrollbar {
-            position: absolute;
-            bottom: 0;
-            height: 14px;
-            overflow-x: auto;
-            overflow-y: hidden;
-            background-color: #f0f1f3;
-            border-top: 1px solid #d0d2d5;
-            box-sizing: border-box;
-            scrollbar-width: auto;
-            z-index: 20;
-        }
-
-        .week-only-scrollbar-inner {
-            height: 1px;
-            min-width: 100%;
-        }
-
-        .week-only-scrollbar::-webkit-scrollbar {
-            height: 14px;
-        }
-
-        .week-only-scrollbar::-webkit-scrollbar-track {
-            background-color: #f0f1f3;
-        }
-
-        .week-only-scrollbar::-webkit-scrollbar-thumb {
-            background-color: #b7b9bc;
-            border-radius: 7px;
-            border: 2px solid #f0f1f3;
-        }
-
-        .week-only-scrollbar::-webkit-scrollbar-thumb:hover {
-            background-color: #9fa2a6;
         }
 
         .scenario-table + .scenario-table {
@@ -2048,7 +1733,6 @@ app_ui = ui.page_fluid(
             left: 0;
             z-index: 4;
             background-color: #f0f1f3;
-
         }
 
         .delivery-table th:nth-child(2),
@@ -2073,12 +1757,6 @@ app_ui = ui.page_fluid(
             left: 342px;
             z-index: 4;
             background-color: #f0f1f3;
-
-            /* Fixed gray seam between Forecast 2027
-               and the scrolling W columns */
-            box-shadow:
-                1px 0 0 #d0d2d5,
-                3px 0 4px rgba(0,0,0,0.08);
         }
 
         .delivery-table th:nth-last-child(2),
@@ -2087,12 +1765,6 @@ app_ui = ui.page_fluid(
             right: 135px;
             z-index: 4;
             background-color: #eeeeee;
-
-            /* Fixed gray seam between the scrolling W columns
-               and Total */
-            box-shadow:
-                -1px 0 0 #d0d2d5,
-                -3px 0 4px rgba(0,0,0,0.08);
         }
 
         .delivery-table th:nth-last-child(1),
