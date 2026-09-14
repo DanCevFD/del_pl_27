@@ -1549,11 +1549,58 @@ app_ui = ui.page_fluid(
             max-width: 500px;
         }
 
+        /* ====================================================
+           TABLE LAYOUT
+           ==================================================== */
+
         .delivery-table-wrapper {
             width: 100%;
-            overflow-x: auto;
+            overflow: hidden;
             margin-top: 25px;
-            position: relative;
+        }
+
+        .delivery-table-layout {
+            width: 100%;
+            display: flex;
+            align-items: flex-start;
+            overflow: hidden;
+        }
+
+        .delivery-table-fixed-left {
+            flex: 0 0 422px;
+            width: 422px;
+            overflow: hidden;
+        }
+
+        .delivery-table-week-scroll {
+            flex: 1 1 auto;
+            min-width: 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .delivery-table-fixed-right {
+            flex: 0 0 197px;
+            width: 197px;
+            overflow: hidden;
+        }
+
+        .delivery-table-week-scroll::-webkit-scrollbar {
+            height: 14px;
+        }
+
+        .delivery-table-week-scroll::-webkit-scrollbar-track {
+            background: #f0f1f3;
+        }
+
+        .delivery-table-week-scroll::-webkit-scrollbar-thumb {
+            background: #bdbfc2;
+            border-radius: 7px;
+            border: 3px solid #f0f1f3;
+        }
+
+        .delivery-table-week-scroll::-webkit-scrollbar-thumb:hover {
+            background: #9fa1a5;
         }
 
         .scenario-table + .scenario-table {
@@ -1566,6 +1613,21 @@ app_ui = ui.page_fluid(
             min-width: 800px;
             table-layout: fixed;
             font-size: 13px;
+        }
+
+        .delivery-table-left {
+            width: 422px;
+            min-width: 422px;
+        }
+
+        .delivery-table-weeks {
+            width: max-content;
+            min-width: 100%;
+        }
+
+        .delivery-table-right {
+            width: 197px;
+            min-width: 197px;
         }
 
         .delivery-table th {
@@ -1584,36 +1646,36 @@ app_ui = ui.page_fluid(
             white-space: nowrap;
         }
 
-        .delivery-table th:nth-child(1),
-        .delivery-table td:nth-child(1) {
+        .delivery-table-left th:nth-child(1),
+        .delivery-table-left td:nth-child(1) {
             width: 150px;
             min-width: 150px;
             max-width: 150px;
         }
 
-        .delivery-table th:nth-child(2),
-        .delivery-table td:nth-child(2) {
+        .delivery-table-left th:nth-child(2),
+        .delivery-table-left td:nth-child(2) {
             width: 140px;
             min-width: 140px;
             max-width: 140px;
         }
 
-        .delivery-table th:nth-child(3),
-        .delivery-table td:nth-child(3) {
+        .delivery-table-left th:nth-child(3),
+        .delivery-table-left td:nth-child(3) {
             width: 52px;
             min-width: 52px;
             max-width: 52px;
         }
 
-        .delivery-table th:nth-child(4),
-        .delivery-table td:nth-child(4) {
+        .delivery-table-left th:nth-child(4),
+        .delivery-table-left td:nth-child(4) {
             width: 80px;
             min-width: 80px;
             max-width: 80px;
         }
 
-        .delivery-table th:nth-child(n+5),
-        .delivery-table td:nth-child(n+5) {
+        .delivery-table-weeks th,
+        .delivery-table-weeks td {
             width: 62px;
             min-width: 62px;
             max-width: 62px;
@@ -1621,11 +1683,18 @@ app_ui = ui.page_fluid(
             padding-right: 2px;
         }
 
-        .delivery-table th.replenishment-header,
-        .delivery-table td.replenishment-cell {
-            width: 135px !important;
-            min-width: 135px !important;
-            max-width: 135px !important;
+        .delivery-table-right th:nth-child(1),
+        .delivery-table-right td:nth-child(1) {
+            width: 62px;
+            min-width: 62px;
+            max-width: 62px;
+        }
+
+        .delivery-table-right th:nth-child(2),
+        .delivery-table-right td:nth-child(2) {
+            width: 135px;
+            min-width: 135px;
+            max-width: 135px;
         }
 
         .replenishment-header {
@@ -1721,91 +1790,6 @@ app_ui = ui.page_fluid(
             background-color: #f8f8f8;
             color: #555;
             font-size: 12px;
-        }
-
-        /* ====================================================
-           FIXED TABLE COLUMNS
-           ==================================================== */
-
-        .delivery-table th:nth-child(1),
-        .delivery-table td:nth-child(1) {
-            position: sticky;
-            left: 0;
-            z-index: 4;
-            background-color: #f0f1f3;
-        }
-
-        .delivery-table th:nth-child(2),
-        .delivery-table td:nth-child(2) {
-            position: sticky;
-            left: 150px;
-            z-index: 4;
-            background-color: #f0f1f3;
-        }
-
-        .delivery-table th:nth-child(3),
-        .delivery-table td:nth-child(3) {
-            position: sticky;
-            left: 290px;
-            z-index: 4;
-            background-color: #f0f1f3;
-        }
-
-        .delivery-table th:nth-child(4),
-        .delivery-table td:nth-child(4) {
-            position: sticky;
-            left: 342px;
-            z-index: 4;
-            background-color: #f0f1f3;
-        }
-
-        .delivery-table th:nth-last-child(2),
-        .delivery-table td:nth-last-child(2) {
-            position: sticky;
-            right: 135px;
-            z-index: 4;
-            background-color: #eeeeee;
-        }
-
-        .delivery-table th:nth-last-child(1),
-        .delivery-table td:nth-last-child(1) {
-            position: sticky;
-            right: 0;
-            z-index: 4;
-            background-color: white;
-        }
-
-        .delivery-table thead th {
-            z-index: 5;
-        }
-
-        .delivery-table .month-header {
-            background-color: #fafafa !important;
-        }
-
-        .delivery-table th:nth-last-child(2) {
-            background-color: #f0f1f3 !important;
-        }
-
-        .delivery-table td:nth-last-child(2) {
-            background-color: #eeeeee !important;
-        }
-
-        .delivery-table th:nth-last-child(1) {
-            background-color: #f0f1f3 !important;
-        }
-
-        .delivery-table td:nth-last-child(1) {
-            background-color: white !important;
-        }
-
-        .delivery-table td.blocked-cell {
-            background-color: #eeeeee;
-        }
-
-        .delivery-table tr.percentage-row td:nth-last-child(2),
-        .delivery-table tr.percentage-row td:nth-last-child(1) {
-            background-color: #f8f8f8 !important;
         }
 
         .send-controls {
@@ -1952,7 +1936,6 @@ app_ui = ui.page_fluid(
         }
 
         """)
-
     ),
 
     ui.div(
@@ -2351,10 +2334,47 @@ def server(
 
 
         # ====================================================
-        # WEEK HEADER
+        # LEFT HEADER
         # ====================================================
 
-        header_cells = [
+        left_month_row = [
+
+            ui.tags.th(
+                "",
+                {
+                    "class":
+                        "month-header"
+                }
+            ),
+
+            ui.tags.th(
+                "",
+                {
+                    "class":
+                        "month-header"
+                }
+            ),
+
+            ui.tags.th(
+                "",
+                {
+                    "class":
+                        "month-header"
+                }
+            ),
+
+            ui.tags.th(
+                "",
+                {
+                    "class":
+                        "month-header"
+                }
+            )
+
+        ]
+
+
+        left_header_row = [
 
             ui.tags.th(
                 "Scenario"
@@ -2376,9 +2396,33 @@ def server(
 
         ]
 
+
+        # ====================================================
+        # WEEK HEADER
+        # ====================================================
+
+        week_month_row = []
+
+        for month in month_cells:
+
+            week_month_row.append(
+
+                ui.tags.th(
+                    month,
+                    {
+                        "class":
+                            "month-header"
+                    }
+                )
+
+            )
+
+
+        week_header_row = []
+
         for display_week in display_weeks:
 
-            header_cells.append(
+            week_header_row.append(
 
                 ui.tags.th(
                     f"W{display_week}"
@@ -2387,16 +2431,36 @@ def server(
             )
 
 
-        header_cells.append(
+        # ====================================================
+        # RIGHT HEADER
+        # ====================================================
+
+        right_month_row = [
+
+            ui.tags.th(
+                "",
+                {
+                    "class":
+                        "month-header"
+                }
+            ),
+
+            ui.tags.th(
+                "",
+                {
+                    "class":
+                        "month-header replenishment-header"
+                }
+            )
+
+        ]
+
+
+        right_header_row = [
 
             ui.tags.th(
                 "Total"
-            )
-
-        )
-
-
-        header_cells.append(
+            ),
 
             ui.tags.th(
                 ui.HTML(
@@ -2408,96 +2472,14 @@ def server(
                 }
             )
 
-        )
-
-
-        # ====================================================
-        # MONTH ROW
-        # ====================================================
-
-        month_row = [
-
-            ui.tags.th(
-                "",
-                {
-                    "class":
-                        "month-header"
-                }
-            ),
-
-            ui.tags.th(
-                "",
-                {
-                    "class":
-                        "month-header"
-                }
-            ),
-
-            ui.tags.th(
-                "",
-                {
-                    "class":
-                        "month-header"
-                }
-            ),
-
-            ui.tags.th(
-                "",
-                {
-                    "class":
-                        "month-header"
-                }
-            )
-
         ]
 
-        for month in month_cells:
-
-            month_row.append(
-
-                ui.tags.th(
-                    month,
-                    {
-                        "class":
-                            "month-header"
-                    }
-
-                )
-
-            )
-
-
-        month_row.append(
-
-            ui.tags.th(
-                "",
-                {
-                    "class":
-                        "month-header"
-                }
-            )
-
-        )
-
-
-        month_row.append(
-
-            ui.tags.th(
-                "",
-                {
-                    "class":
-                        "month-header replenishment-header"
-                }
-            )
-
-        )
-
 
         # ====================================================
-        # QUANTITY ROW
+        # LEFT QUANTITY ROW
         # ====================================================
 
-        quantity_cells = [
+        left_quantity_cells = [
 
             ui.tags.td(
                 scenario_label,
@@ -2535,6 +2517,13 @@ def server(
         ]
 
 
+        # ====================================================
+        # WEEK QUANTITY ROW
+        # ====================================================
+
+        week_quantity_cells = []
+
+
         # ----------------------------------------------------
         # IMPORTANT:
         # Inputs use RAW weeks, not normalized display weeks.
@@ -2544,7 +2533,7 @@ def server(
 
         for week in raw_weeks:
 
-            quantity_cells.append(
+            week_quantity_cells.append(
 
                 ui.tags.td(
 
@@ -2559,10 +2548,10 @@ def server(
 
 
         # ====================================================
-        # TOTAL
+        # RIGHT QUANTITY ROW
         # ====================================================
 
-        quantity_cells.append(
+        right_quantity_cells = [
 
             ui.tags.td(
 
@@ -2575,16 +2564,7 @@ def server(
                         "total-cell"
                 }
 
-            )
-
-        )
-
-
-        # ====================================================
-        # REPLENISHMENT WEEK
-        # ====================================================
-
-        quantity_cells.append(
+            ),
 
             ui.tags.td(
 
@@ -2616,14 +2596,14 @@ def server(
 
             )
 
-        )
+        ]
 
 
         # ====================================================
-        # PERCENTAGE ROW
+        # LEFT PERCENTAGE ROW
         # ====================================================
 
-        percentage_cells = [
+        left_percentage_cells = [
 
             ui.tags.td(
                 ""
@@ -2644,9 +2624,16 @@ def server(
         ]
 
 
+        # ====================================================
+        # WEEK PERCENTAGE ROW
+        # ====================================================
+
+        week_percentage_cells = []
+
+
         for week in raw_weeks:
 
-            percentage_cells.append(
+            week_percentage_cells.append(
 
                 ui.tags.td(
 
@@ -2659,16 +2646,15 @@ def server(
             )
 
 
-        percentage_cells.append(
+        # ====================================================
+        # RIGHT PERCENTAGE ROW
+        # ====================================================
+
+        right_percentage_cells = [
 
             ui.tags.td(
                 "100%"
-            )
-
-        )
-
-
-        percentage_cells.append(
+            ),
 
             ui.tags.td(
                 "",
@@ -2678,28 +2664,28 @@ def server(
                 }
             )
 
-        )
+        ]
 
 
         # ====================================================
-        # TABLE
+        # LEFT TABLE
         # ====================================================
 
-        table = ui.tags.table(
+        left_table = ui.tags.table(
 
             {
                 "class":
-                    "delivery-table"
+                    "delivery-table delivery-table-left"
             },
 
             ui.tags.thead(
 
                 ui.tags.tr(
-                    month_row
+                    left_month_row
                 ),
 
                 ui.tags.tr(
-                    header_cells
+                    left_header_row
                 )
 
             ),
@@ -2707,7 +2693,7 @@ def server(
             ui.tags.tbody(
 
                 ui.tags.tr(
-                    quantity_cells
+                    left_quantity_cells
                 ),
 
                 ui.tags.tr(
@@ -2716,7 +2702,7 @@ def server(
                             "percentage-row"
                     },
 
-                    percentage_cells
+                    left_percentage_cells
                 )
 
             )
@@ -2724,7 +2710,137 @@ def server(
         )
 
 
-        return table
+        # ====================================================
+        # WEEK TABLE
+        # ====================================================
+
+        week_table = ui.tags.table(
+
+            {
+                "class":
+                    "delivery-table delivery-table-weeks"
+            },
+
+            ui.tags.thead(
+
+                ui.tags.tr(
+                    week_month_row
+                ),
+
+                ui.tags.tr(
+                    week_header_row
+                )
+
+            ),
+
+            ui.tags.tbody(
+
+                ui.tags.tr(
+                    week_quantity_cells
+                ),
+
+                ui.tags.tr(
+                    {
+                        "class":
+                            "percentage-row"
+                    },
+
+                    week_percentage_cells
+                )
+
+            )
+
+        )
+
+
+        # ====================================================
+        # RIGHT TABLE
+        # ====================================================
+
+        right_table = ui.tags.table(
+
+            {
+                "class":
+                    "delivery-table delivery-table-right"
+            },
+
+            ui.tags.thead(
+
+                ui.tags.tr(
+                    right_month_row
+                ),
+
+                ui.tags.tr(
+                    right_header_row
+                )
+
+            ),
+
+            ui.tags.tbody(
+
+                ui.tags.tr(
+                    right_quantity_cells
+                ),
+
+                ui.tags.tr(
+                    {
+                        "class":
+                            "percentage-row"
+                    },
+
+                    right_percentage_cells
+                )
+
+            )
+
+        )
+
+
+        # ====================================================
+        # COMPLETE DISPLAY
+        # ====================================================
+
+        return ui.div(
+
+            {
+                "class":
+                    "delivery-table-layout"
+            },
+
+            ui.div(
+
+                {
+                    "class":
+                        "delivery-table-fixed-left"
+                },
+
+                left_table
+
+            ),
+
+            ui.div(
+
+                {
+                    "class":
+                        "delivery-table-week-scroll"
+                },
+
+                week_table
+
+            ),
+
+            ui.div(
+
+                {
+                    "class":
+                        "delivery-table-fixed-right"
+                },
+
+                right_table
+
+            )
+
+        )
 
 
     # ========================================================
