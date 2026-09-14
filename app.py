@@ -1,3 +1,4 @@
+
 from shiny import App, ui, render, reactive, Inputs, Outputs, Session
 import pandas as pd
 import re
@@ -259,6 +260,7 @@ def get_month_for_week(
         min_date
     )
 
+    # ISO year belonging to the country's minimum date
     base_year = int(
         min_date.isocalendar().year
     )
@@ -266,6 +268,20 @@ def get_month_for_week(
     normalized_week = normalize_week(
         week
     )
+
+    # --------------------------------------------------------
+    # Detect crossing from W52 back to W1.
+    #
+    # Example:
+    #
+    # min_week = 50
+    # max_week = 54
+    #
+    # displayed:
+    # W50 W51 W52 W1 W2
+    #
+    # W1 and W2 belong to the following ISO year.
+    # --------------------------------------------------------
 
     if original_min_week is not None:
 
@@ -1013,6 +1029,11 @@ app_ui = ui.page_fluid(
                     "‹";
 
 
+                /*
+                 * Do not allow browsing to a month before
+                 * the current month.
+                 */
+
                 previousButton.disabled =
                     isCurrentMonth();
 
@@ -1038,6 +1059,11 @@ app_ui = ui.page_fluid(
 
                             pickerYear--;
                         }
+
+                        /*
+                         * Safety check so the picker can never
+                         * move before the current month.
+                         */
 
                         if (
                             isBeforeCurrentMonth()
@@ -1198,6 +1224,13 @@ app_ui = ui.page_fluid(
                     );
 
 
+                /*
+                 * Keep the existing display of weeks, except
+                 * that the current ISO week is allowed to appear
+                 * even when its Monday falls in the previous
+                 * calendar month.
+                 */
+
                 if (
                     monday.getMonth() !==
                     pickerMonth
@@ -1222,6 +1255,12 @@ app_ui = ui.page_fluid(
                     monday <= lastDay
                 ) {
 
+                    /*
+                     * Keep the current week if it started in the
+                     * previous month. For all other weeks,
+                     * preserve the original month filtering.
+                     */
+
                     const isCurrentWeek =
                         monday.getTime() ===
                         currentWeekMonday.getTime();
@@ -1239,6 +1278,12 @@ app_ui = ui.page_fluid(
                         break;
                     }
 
+
+                    /*
+                     * This is the actual restriction:
+                     * never display a week before today's
+                     * ISO week.
+                     */
 
                     if (
                         monday >=
@@ -1450,538 +1495,6 @@ app_ui = ui.page_fluid(
                         );
                     }
                 }
-            );
-
-        })();
-
-        """),
-
-        # ====================================================
-        # WEEKS-ONLY HORIZONTAL SCROLLBAR
-        # ====================================================
-
-        ui.tags.script("""
-
-        (function() {
-
-            const LEFT_WIDTH = 422;
-            const RIGHT_WIDTH = 197;
-            const SCROLLBAR_HEIGHT = 14;
-
-            const scrollbarElements = new Map();
-
-
-            function createScrollbar(wrapper) {
-
-                if (
-                    scrollbarElements.has(wrapper)
-                ) {
-
-                    return scrollbarElements.get(
-                        wrapper
-                    );
-
-                }
-
-
-                const scrollbar =
-                    document.createElement(
-                        "div"
-                    );
-
-                scrollbar.className =
-                    "weeks-only-scrollbar";
-
-
-                const inner =
-                    document.createElement(
-                        "div"
-                    );
-
-                inner.className =
-                    "weeks-only-scrollbar-inner";
-
-
-                scrollbar.appendChild(
-                    inner
-                );
-
-                document.body.appendChild(
-                    scrollbar
-                );
-
-
-                const state = {
-
-                    scrollbar:
-                        scrollbar,
-
-                    inner:
-                        inner,
-
-                    updating:
-                        false
-
-                };
-
-
-                scrollbarElements.set(
-                    wrapper,
-                    state
-                );
-
-
-                /*
-                 * ------------------------------------------------
-                 * FAKE SCROLLBAR -> REAL TABLE
-                 * ------------------------------------------------
-                 *
-                 * The fake scrollbar and the table do not
-                 * necessarily have exactly the same client
-                 * width. Therefore use the proportion of the
-                 * available scroll range instead of copying
-                 * scrollLeft directly.
-                 */
-
-                scrollbar.addEventListener(
-                    "scroll",
-                    function() {
-
-                        if (
-                            state.updating
-                        ) {
-
-                            return;
-
-                        }
-
-
-                        const fakeMax =
-                            Math.max(
-                                0,
-                                scrollbar.scrollWidth -
-                                scrollbar.clientWidth
-                            );
-
-
-                        const realMax =
-                            Math.max(
-                                0,
-                                wrapper.scrollWidth -
-                                wrapper.clientWidth
-                            );
-
-
-                        if (
-                            fakeMax <= 0 ||
-                            realMax <= 0
-                        ) {
-
-                            return;
-
-                        }
-
-
-                        const ratio =
-                            scrollbar.scrollLeft /
-                            fakeMax;
-
-
-                        state.updating =
-                            true;
-
-
-                        wrapper.scrollLeft =
-                            ratio *
-                            realMax;
-
-
-                        requestAnimationFrame(
-                            function() {
-
-                                state.updating =
-                                    false;
-
-                            }
-                        );
-
-                    }
-                );
-
-
-                /*
-                 * ------------------------------------------------
-                 * REAL TABLE -> FAKE SCROLLBAR
-                 * ------------------------------------------------
-                 */
-
-                wrapper.addEventListener(
-                    "scroll",
-                    function() {
-
-                        if (
-                            state.updating
-                        ) {
-
-                            return;
-
-                        }
-
-
-                        const fakeMax =
-                            Math.max(
-                                0,
-                                scrollbar.scrollWidth -
-                                scrollbar.clientWidth
-                            );
-
-
-                        const realMax =
-                            Math.max(
-                                0,
-                                wrapper.scrollWidth -
-                                wrapper.clientWidth
-                            );
-
-
-                        if (
-                            fakeMax <= 0 ||
-                            realMax <= 0
-                        ) {
-
-                            return;
-
-                        }
-
-
-                        const ratio =
-                            wrapper.scrollLeft /
-                            realMax;
-
-
-                        state.updating =
-                            true;
-
-
-                        scrollbar.scrollLeft =
-                            ratio *
-                            fakeMax;
-
-
-                        requestAnimationFrame(
-                            function() {
-
-                                state.updating =
-                                    false;
-
-                            }
-                        );
-
-                    }
-                );
-
-
-                return state;
-
-            }
-
-
-            function updateScrollbar(
-                wrapper
-            ) {
-
-                if (
-                    !wrapper ||
-                    !wrapper.isConnected
-                ) {
-
-                    return;
-
-                }
-
-
-                const table =
-                    wrapper.querySelector(
-                        ".delivery-table"
-                    );
-
-
-                if (!table) {
-
-                    return;
-
-                }
-
-
-                const state =
-                    createScrollbar(
-                        wrapper
-                    );
-
-
-                const scrollbar =
-                    state.scrollbar;
-
-                const inner =
-                    state.inner;
-
-
-                const wrapperRect =
-                    wrapper.getBoundingClientRect();
-
-
-                const scrollWidth =
-                    wrapper.scrollWidth;
-
-                const clientWidth =
-                    wrapper.clientWidth;
-
-
-                const maxScroll =
-                    Math.max(
-                        0,
-                        scrollWidth -
-                        clientWidth
-                    );
-
-
-                if (
-                    maxScroll <= 0
-                ) {
-
-                    scrollbar.style.display =
-                        "none";
-
-                    return;
-
-                }
-
-
-                /*
-                 * The scrollbar occupies ONLY the visible
-                 * W-column region.
-                 *
-                 * First 4 columns:
-                 * 150 + 140 + 52 + 80 = 422 px
-                 *
-                 * Last 2 columns:
-                 * 62 + 135 = 197 px
-                 */
-
-                const weeksWidth =
-                    Math.max(
-                        0,
-                        clientWidth -
-                        LEFT_WIDTH -
-                        RIGHT_WIDTH
-                    );
-
-
-                if (
-                    weeksWidth <= 0
-                ) {
-
-                    scrollbar.style.display =
-                        "none";
-
-                    return;
-
-                }
-
-
-                scrollbar.style.display =
-                    "block";
-
-                scrollbar.style.position =
-                    "fixed";
-
-                scrollbar.style.left =
-                    (
-                        wrapperRect.left +
-                        LEFT_WIDTH
-                    ) + "px";
-
-                scrollbar.style.top =
-                    (
-                        wrapperRect.top +
-                        wrapper.clientHeight
-                    ) + "px";
-
-                scrollbar.style.width =
-                    weeksWidth + "px";
-
-                scrollbar.style.height =
-                    SCROLLBAR_HEIGHT + "px";
-
-
-                /*
-                 * Make the fake scrollbar have exactly the
-                 * same TOTAL scroll range as the real table.
-                 *
-                 * scrollbar.scrollWidth
-                 * =
-                 * weeksWidth + maxScroll
-                 *
-                 * therefore:
-                 *
-                 * fakeMaxScroll
-                 * =
-                 * (weeksWidth + maxScroll) - weeksWidth
-                 * =
-                 * maxScroll
-                 */
-
-                inner.style.width =
-                    (
-                        weeksWidth +
-                        maxScroll
-                    ) + "px";
-
-                inner.style.height =
-                    "1px";
-
-
-                /*
-                 * Synchronize the initial position.
-                 */
-
-                const fakeMax =
-                    Math.max(
-                        0,
-                        scrollbar.scrollWidth -
-                        scrollbar.clientWidth
-                    );
-
-
-                const realMax =
-                    Math.max(
-                        0,
-                        wrapper.scrollWidth -
-                        wrapper.clientWidth
-                    );
-
-
-                if (
-                    fakeMax > 0 &&
-                    realMax > 0
-                ) {
-
-                    const ratio =
-                        wrapper.scrollLeft /
-                        realMax;
-
-
-                    state.updating =
-                        true;
-
-
-                    scrollbar.scrollLeft =
-                        ratio *
-                        fakeMax;
-
-
-                    requestAnimationFrame(
-                        function() {
-
-                            state.updating =
-                                false;
-
-                        }
-                    );
-
-                }
-
-            }
-
-
-            function updateAll() {
-
-                document
-                    .querySelectorAll(
-                        ".delivery-table-wrapper"
-                    )
-                    .forEach(
-                        function(wrapper) {
-
-                            updateScrollbar(
-                                wrapper
-                            );
-
-                        }
-                    );
-
-
-                scrollbarElements.forEach(
-                    function(
-                        state,
-                        wrapper
-                    ) {
-
-                        if (
-                            !wrapper.isConnected
-                        ) {
-
-                            state.scrollbar.remove();
-
-                            scrollbarElements.delete(
-                                wrapper
-                            );
-
-                        }
-
-                    }
-                );
-
-            }
-
-
-            const observer =
-                new MutationObserver(
-                    function() {
-
-                        requestAnimationFrame(
-                            updateAll
-                        );
-
-                    }
-                );
-
-
-            observer.observe(
-                document.body,
-                {
-                    childList: true,
-                    subtree: true
-                }
-            );
-
-
-            window.addEventListener(
-                "resize",
-                updateAll
-            );
-
-
-            window.addEventListener(
-                "scroll",
-                updateAll,
-                true
-            );
-
-
-            setTimeout(
-                updateAll,
-                100
-            );
-
-            setTimeout(
-                updateAll,
-                500
-            );
-
-            setTimeout(
-                updateAll,
-                1000
             );
 
         })();
@@ -2439,54 +1952,6 @@ app_ui = ui.page_fluid(
             background-color: #f0f1f3;
         }
 
-
-        /* ====================================================
-           WEEKS-ONLY HORIZONTAL SCROLLBAR
-           ==================================================== */
-
-        .delivery-table-wrapper {
-            scrollbar-width: none;
-        }
-
-        .delivery-table-wrapper::-webkit-scrollbar {
-            height: 14px;
-        }
-
-        .delivery-table-wrapper::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .delivery-table-wrapper::-webkit-scrollbar-thumb {
-            background: transparent;
-        }
-
-        .weeks-only-scrollbar {
-            z-index: 99998;
-            overflow-x: auto;
-            overflow-y: hidden;
-            background-color: #f0f1f3;
-            box-sizing: border-box;
-            scrollbar-width: auto;
-        }
-
-        .weeks-only-scrollbar::-webkit-scrollbar {
-            height: 14px;
-        }
-
-        .weeks-only-scrollbar::-webkit-scrollbar-track {
-            background-color: #f0f1f3;
-        }
-
-        .weeks-only-scrollbar::-webkit-scrollbar-thumb {
-            background-color: #bdbdbd;
-            border: 3px solid #f0f1f3;
-            border-radius: 7px;
-        }
-
-        .weeks-only-scrollbar-inner {
-            height: 1px;
-        }
-
         """)
 
     ),
@@ -2828,6 +2293,14 @@ def server(
             ]
         )
 
+        # ----------------------------------------------------
+        # IMPORTANT:
+        # Keep the ORIGINAL week numbers internally because
+        # these are the IDs of the inputs.
+        #
+        # Only the displayed week number is normalized.
+        # ----------------------------------------------------
+
         raw_weeks = get_week_range(
             min_week,
             max_week
@@ -3062,6 +2535,13 @@ def server(
 
         ]
 
+
+        # ----------------------------------------------------
+        # IMPORTANT:
+        # Inputs use RAW weeks, not normalized display weeks.
+        # Example: raw 53 -> input ID scenario_week_53,
+        # while the visible header says W1.
+        # ----------------------------------------------------
 
         for week in raw_weeks:
 
@@ -3393,6 +2873,9 @@ def server(
 
             total = 0
 
+            # Keep RAW weeks here because these are the
+            # actual Shiny input IDs.
+
             for week in get_week_range(
                 min_week,
                 max_week
@@ -3481,6 +2964,9 @@ def server(
 
             total = 0
 
+            # Use RAW week numbers because these are the
+            # actual Shiny input IDs.
+
             for raw_week in get_week_range(
                 min_week,
                 max_week
@@ -3511,6 +2997,8 @@ def server(
 
                     continue
 
+
+            # Current RAW week
 
             try:
 
@@ -3551,6 +3039,15 @@ def server(
 
         return percentage
 
+
+    # --------------------------------------------------------
+    # Register a renderer for every RAW week that can occur
+    # in the CSV.
+    #
+    # This is important because the visible week can be
+    # normalized (e.g. raw 53 -> W1), but the Shiny input ID
+    # remains scenario_week_53.
+    # --------------------------------------------------------
 
     all_raw_weeks = sorted(
         {
@@ -3603,6 +3100,10 @@ def server(
                 return
 
 
+            # ------------------------------------------------
+            # ORD
+            # ------------------------------------------------
+
             ord_value = country.get(
                 "ord"
             )
@@ -3626,6 +3127,10 @@ def server(
                 return
 
 
+            # ------------------------------------------------
+            # CURRENT VALUE
+            # ------------------------------------------------
+
             current_value = getattr(
                 input,
                 f"{scenario}_week_{week}"
@@ -3648,6 +3153,10 @@ def server(
                 current_value
             )
 
+
+            # ------------------------------------------------
+            # OTHER WEEKS
+            # ------------------------------------------------
 
             other_total = 0
 
@@ -3717,6 +3226,15 @@ def server(
         return limit_week
 
 
+    # --------------------------------------------------------
+    # Register the limiter for every RAW week that can occur
+    # in the CSV.
+    #
+    # This is important because the visible week can be
+    # normalized (e.g. raw 53 -> W1), but the Shiny input ID
+    # remains scenario_week_53.
+    # --------------------------------------------------------
+
     all_raw_weeks = sorted(
         {
             week
@@ -3766,6 +3284,14 @@ def server(
 
             return
 
+
+        # ====================================================
+        # BUTTON VALIDATION
+        # ====================================================
+        # Both scenarios must contain:
+        # 1. At least one quantity in a week column.
+        # 2. A replenishment week value.
+        # ====================================================
 
         scenario_has_week_value = {
             "ideal": False,
@@ -3909,6 +3435,10 @@ def server(
             return
 
 
+        # ====================================================
+        # ORD
+        # ====================================================
+
         ord_value = country.get(
             "ord"
         )
@@ -3927,6 +3457,10 @@ def server(
                 )
             )
 
+
+        # ====================================================
+        # BUILD SCENARIO DATA
+        # ====================================================
 
         all_output_rows = []
 
@@ -3955,6 +3489,10 @@ def server(
             total = 0
 
 
+            # =================================================
+            # REPLENISHMENT WEEK
+            # =================================================
+
             replenishment_week = ""
 
             try:
@@ -3976,6 +3514,10 @@ def server(
                 replenishment_week
             ).strip()
 
+
+            # =================================================
+            # READ RAW WEEK INPUTS
+            # =================================================
 
             for week in get_week_range(
                 min_week,
@@ -4032,6 +3574,10 @@ def server(
                 )
 
 
+            # =================================================
+            # ORD CHECK
+            # =================================================
+
             if (
                 ord_value is not None
                 and total > ord_value
@@ -4050,6 +3596,10 @@ def server(
                 return
 
 
+            # =================================================
+            # REQUIRE QUANTITY
+            # =================================================
+
             if total <= 0:
 
                 status_type.set(
@@ -4064,6 +3614,10 @@ def server(
                 return
 
 
+            # =================================================
+            # BUILD OUTPUT
+            # =================================================
+
             output_rows = []
 
 
@@ -4076,6 +3630,10 @@ def server(
                 qty = row[
                     "qty"
                 ]
+
+
+                # Display/output the REAL ISO week number,
+                # not the raw wrapped value.
 
                 display_week = normalize_week(
                     raw_week
@@ -4165,6 +3723,10 @@ def server(
             )
 
 
+        # ====================================================
+        # ADDITIONAL NOTES
+        # ====================================================
+
         notes = ""
 
         try:
@@ -4183,6 +3745,10 @@ def server(
             notes
         ).strip()
 
+
+        # ====================================================
+        # EMAIL
+        # ====================================================
 
         subject = (
             "Delivery information - "
@@ -4249,6 +3815,10 @@ def server(
         )
 
 
+        # ====================================================
+        # MICROSOFT 365 OUTLOOK URL
+        # ====================================================
+
         outlook_url = (
             "https://outlook.office.com/mail/deeplink/compose?"
             "to="
@@ -4270,6 +3840,10 @@ def server(
         )
 
 
+        # ====================================================
+        # SEND URL TO BROWSER
+        # ====================================================
+
         await session.send_custom_message(
             "open_outlook",
             {
@@ -4278,6 +3852,10 @@ def server(
             }
         )
 
+
+        # ====================================================
+        # SUCCESS
+        # ====================================================
 
         status_type.set(
             "success"
@@ -4321,6 +3899,14 @@ def server(
 
             return
 
+
+        # ====================================================
+        # BUTTON VALIDATION
+        # ====================================================
+        # Both scenarios must contain:
+        # 1. At least one quantity in a week column.
+        # 2. A replenishment week value.
+        # ====================================================
 
         scenario_has_week_value = {
             "ideal": False,
