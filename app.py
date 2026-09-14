@@ -1577,72 +1577,102 @@ app_ui = ui.page_fluid(
            ==================================================== */
 
         /*
-           All three HTML tables contain the same four logical
-           rows:
-
-           1. Month row
-           2. Column header row
-           3. Quantity/input row
-           4. Percentage row
-
-           Because these are separate tables, the browser would
-           otherwise calculate their heights independently.
+           The three sections are separate HTML tables.
+           Force the actual table rows and cells to have exactly
+           the same dimensions in every section.
         */
 
-        .scenario-left table,
-        .scenario-weeks table,
-        .scenario-right table {
-            height: 137px;
+        .scenario-left-table,
+        .scenario-weeks-table,
+        .scenario-right-table {
+            height: 137px !important;
         }
 
 
         /* Month row */
 
-        .scenario-left thead tr:first-child > th,
-        .scenario-weeks thead tr:first-child > th,
-        .scenario-right thead tr:first-child > th {
-            height: 27px;
-            min-height: 27px;
-            max-height: 27px;
-            box-sizing: border-box;
-            padding-top: 0;
-            padding-bottom: 0;
+        .scenario-left-table thead tr:first-child,
+        .scenario-weeks-table thead tr:first-child,
+        .scenario-right-table thead tr:first-child {
+            height: 27px !important;
+        }
+
+        .scenario-left-table thead tr:first-child > th,
+        .scenario-weeks-table thead tr:first-child > th,
+        .scenario-right-table thead tr:first-child > th {
+            height: 27px !important;
+            min-height: 27px !important;
+            max-height: 27px !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            line-height: 27px !important;
+            box-sizing: border-box !important;
         }
 
 
         /* Header row */
 
-        .scenario-left thead tr:nth-child(2) > th,
-        .scenario-weeks thead tr:nth-child(2) > th,
-        .scenario-right thead tr:nth-child(2) > th {
-            height: 45px;
-            min-height: 45px;
-            max-height: 45px;
-            box-sizing: border-box;
+        .scenario-left-table thead tr:nth-child(2),
+        .scenario-weeks-table thead tr:nth-child(2),
+        .scenario-right-table thead tr:nth-child(2) {
+            height: 45px !important;
+        }
+
+        .scenario-left-table thead tr:nth-child(2) > th,
+        .scenario-weeks-table thead tr:nth-child(2) > th,
+        .scenario-right-table thead tr:nth-child(2) > th {
+            height: 45px !important;
+            min-height: 45px !important;
+            max-height: 45px !important;
+            padding-top: 7px !important;
+            padding-bottom: 7px !important;
+            box-sizing: border-box !important;
+            line-height: normal !important;
+            vertical-align: middle !important;
         }
 
 
         /* Quantity row */
 
-        .scenario-left tbody tr:first-child > td,
-        .scenario-weeks tbody tr:first-child > td,
-        .scenario-right tbody tr:first-child > td {
-            height: 40px;
-            min-height: 40px;
-            max-height: 40px;
-            box-sizing: border-box;
+        .scenario-left-table tbody tr:first-child,
+        .scenario-weeks-table tbody tr:first-child,
+        .scenario-right-table tbody tr:first-child {
+            height: 40px !important;
+        }
+
+        .scenario-left-table tbody tr:first-child > td,
+        .scenario-weeks-table tbody tr:first-child > td,
+        .scenario-right-table tbody tr:first-child > td {
+            height: 40px !important;
+            min-height: 40px !important;
+            max-height: 40px !important;
+            padding-top: 4px !important;
+            padding-bottom: 4px !important;
+            box-sizing: border-box !important;
+            line-height: normal !important;
+            vertical-align: middle !important;
         }
 
 
         /* Percentage row */
 
-        .scenario-left tbody tr:nth-child(2) > td,
-        .scenario-weeks tbody tr:nth-child(2) > td,
-        .scenario-right tbody tr:nth-child(2) > td {
-            height: 25px;
-            min-height: 25px;
-            max-height: 25px;
-            box-sizing: border-box;
+        .scenario-left-table tbody tr:nth-child(2),
+        .scenario-weeks-table tbody tr:nth-child(2),
+        .scenario-right-table tbody tr:nth-child(2) {
+            height: 25px !important;
+        }
+
+        .scenario-left-table tbody tr:nth-child(2) > td,
+        .scenario-weeks-table tbody tr:nth-child(2) > td,
+        .scenario-right-table tbody tr:nth-child(2) > td {
+            height: 25px !important;
+            min-height: 25px !important;
+            max-height: 25px !important;
+            padding-top: 4px !important;
+            padding-bottom: 4px !important;
+            box-sizing: border-box !important;
+            line-height: normal !important;
+            vertical-align: middle !important;
         }
 
 
