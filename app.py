@@ -1525,6 +1525,8 @@ app_ui = ui.page_fluid(
         .delivery-table-fixed-left {
             flex: 0 0 422px;
             width: 422px;
+            min-width: 422px;
+            max-width: 422px;
             overflow: hidden;
         }
 
@@ -1538,6 +1540,8 @@ app_ui = ui.page_fluid(
         .delivery-table-fixed-right {
             flex: 0 0 197px;
             width: 197px;
+            min-width: 197px;
+            max-width: 197px;
             overflow: hidden;
         }
 
@@ -1563,35 +1567,53 @@ app_ui = ui.page_fluid(
             margin-top: 35px;
         }
 
+        /*
+         * IMPORTANT:
+         * Do not give the individual tables a generic minimum
+         * width. That caused the W columns to stretch.
+         */
+
         .delivery-table {
             border-collapse: collapse;
             width: auto;
-            min-width: 800px;
             table-layout: fixed;
             font-size: 13px;
+            box-sizing: border-box;
+            margin: 0;
         }
 
         .delivery-table-left {
-            width: 422px;
-            min-width: 422px;
+            width: 422px !important;
+            min-width: 422px !important;
+            max-width: 422px !important;
         }
 
         /*
-         * IMPORTANT:
-         * Do not let the week table stretch to the width of
-         * the scroll container. Every week must remain exactly
-         * 62px wide.
+         * The week table must be exactly the combined width
+         * of its 62 px columns.
+         *
+         * It must NOT use min-width: 100%, otherwise the
+         * browser enlarges the W columns to fill the scroll
+         * container.
          */
+
         .delivery-table-weeks {
             width: max-content !important;
             min-width: 0 !important;
-            max-width: none;
-            table-layout: fixed;
+            max-width: none !important;
+            table-layout: fixed !important;
+            box-sizing: border-box;
         }
 
         .delivery-table-right {
-            width: 197px;
-            min-width: 197px;
+            width: 197px !important;
+            min-width: 197px !important;
+            max-width: 197px !important;
+        }
+
+        .delivery-table th,
+        .delivery-table td {
+            box-sizing: border-box;
         }
 
         .delivery-table th {
@@ -1601,7 +1623,6 @@ app_ui = ui.page_fluid(
             text-align: center;
             font-weight: 600;
             white-space: nowrap;
-            box-sizing: border-box;
         }
 
         .delivery-table td {
@@ -1609,43 +1630,46 @@ app_ui = ui.page_fluid(
             padding: 4px;
             text-align: center;
             white-space: nowrap;
-            box-sizing: border-box;
         }
 
         .delivery-table-left th:nth-child(1),
         .delivery-table-left td:nth-child(1) {
-            width: 150px;
-            min-width: 150px;
-            max-width: 150px;
+            width: 150px !important;
+            min-width: 150px !important;
+            max-width: 150px !important;
         }
 
         .delivery-table-left th:nth-child(2),
         .delivery-table-left td:nth-child(2) {
-            width: 140px;
-            min-width: 140px;
-            max-width: 140px;
+            width: 140px !important;
+            min-width: 140px !important;
+            max-width: 140px !important;
         }
 
         .delivery-table-left th:nth-child(3),
         .delivery-table-left td:nth-child(3) {
-            width: 52px;
-            min-width: 52px;
-            max-width: 52px;
+            width: 52px !important;
+            min-width: 52px !important;
+            max-width: 52px !important;
         }
 
         .delivery-table-left th:nth-child(4),
         .delivery-table-left td:nth-child(4) {
-            width: 80px;
-            min-width: 80px;
-            max-width: 80px;
+            width: 80px !important;
+            min-width: 80px !important;
+            max-width: 80px !important;
         }
 
         /*
-         * FIX:
-         * Lock every week column to exactly 62px.
-         * box-sizing:border-box means the 62px includes
-         * the cell border and padding.
+         * EXACT W COLUMN SIZE.
+         *
+         * box-sizing:border-box means the 62 px includes:
+         * content + padding + border.
+         *
+         * !important prevents the table/flex layout from
+         * expanding these columns.
          */
+
         .delivery-table-weeks th,
         .delivery-table-weeks td {
             width: 62px !important;
@@ -1653,21 +1677,21 @@ app_ui = ui.page_fluid(
             max-width: 62px !important;
             padding-left: 2px;
             padding-right: 2px;
-            box-sizing: border-box;
+            box-sizing: border-box !important;
         }
 
         .delivery-table-right th:nth-child(1),
         .delivery-table-right td:nth-child(1) {
-            width: 62px;
-            min-width: 62px;
-            max-width: 62px;
+            width: 62px !important;
+            min-width: 62px !important;
+            max-width: 62px !important;
         }
 
         .delivery-table-right th:nth-child(2),
         .delivery-table-right td:nth-child(2) {
-            width: 135px;
-            min-width: 135px;
-            max-width: 135px;
+            width: 135px !important;
+            min-width: 135px !important;
+            max-width: 135px !important;
         }
 
         .replenishment-header {
@@ -2672,11 +2696,27 @@ def server(
         # WEEK TABLE
         # ====================================================
 
+        /*
+         * The exact number of weeks is used to set the exact
+         * physical width of the middle table.
+         *
+         * Every column remains 62 px.
+         */
+
+        week_table_width = (
+            len(raw_weeks) * 62
+        )
+
         week_table = ui.tags.table(
 
             {
                 "class":
-                    "delivery-table delivery-table-weeks"
+                    "delivery-table delivery-table-weeks",
+
+                "style":
+                    f"width: {week_table_width}px; "
+                    f"min-width: {week_table_width}px; "
+                    f"max-width: {week_table_width}px;"
             },
 
             ui.tags.thead(
@@ -3155,6 +3195,7 @@ def server(
 
                 return
 
+
             ord_value = country.get(
                 "ord"
             )
@@ -3176,6 +3217,7 @@ def server(
             except Exception:
 
                 return
+
 
             current_value = getattr(
                 input,
@@ -3460,6 +3502,10 @@ def server(
             return
 
 
+        # ====================================================
+        # ORD
+        # ====================================================
+
         ord_value = country.get(
             "ord"
         )
@@ -3478,6 +3524,10 @@ def server(
                 )
             )
 
+
+        # ====================================================
+        # BUILD SCENARIO DATA
+        # ====================================================
 
         all_output_rows = []
 
@@ -3506,6 +3556,10 @@ def server(
             total = 0
 
 
+            # =================================================
+            # REPLENISHMENT WEEK
+            # =================================================
+
             replenishment_week = ""
 
             try:
@@ -3527,6 +3581,10 @@ def server(
                 replenishment_week
             ).strip()
 
+
+            # =================================================
+            # READ RAW WEEK INPUTS
+            # =================================================
 
             for week in get_week_range(
                 min_week,
@@ -3583,6 +3641,10 @@ def server(
                 )
 
 
+            # =================================================
+            # ORD CHECK
+            # =================================================
+
             if (
                 ord_value is not None
                 and total > ord_value
@@ -3601,6 +3663,10 @@ def server(
                 return
 
 
+            # =================================================
+            # REQUIRE QUANTITY
+            # =================================================
+
             if total <= 0:
 
                 status_type.set(
@@ -3614,6 +3680,10 @@ def server(
 
                 return
 
+
+            # =================================================
+            # BUILD OUTPUT
+            # =================================================
 
             output_rows = []
 
